@@ -1,0 +1,83 @@
+{
+    "df_config": {
+        "ID": {
+            "new_name": "trackId",
+            "is_numeric": true
+        },
+        "LocalX": {
+            "new_name": "xCenter",
+            "is_numeric": true
+        },
+        "LocalY": {
+            "new_name": "yCenter",
+            "is_numeric": true
+        },
+        "Lat": {
+            "new_name": "lat",
+            "is_numeric": true
+        },
+        "Lon": {
+            "new_name": "lon",
+            "is_numeric": true
+        },
+        "Time": {
+            "new_name": "time",
+            "is_numeric": true
+        },
+        "Length": {
+            "new_name": "length",
+            "is_numeric": true
+        },
+        "Width": {
+            "new_name": "width",
+            "is_numeric": true
+        },
+        "Speed": {
+            "new_name": "speed",
+            "unit": "kmh"
+        },
+        "Class": {
+            "new_name": "class"
+        },
+        "Acc": {
+            "new_name": "acc"
+        },
+        "recordingId": {
+            "new_name": "recordingId",
+            "is_numeric": true
+        }
+    },
+    "data_file_regex": ".*_WorldPositions.csv",
+    "metafile_replace": [
+        ".",
+        "_meta."
+    ],
+    "fps": 25,
+    "intersection_points_lonlat": [
+        9.191343,
+        48.788692,
+        9.191638,
+        48.788567
+    ],
+    "intersection_points_xy": [
+        -7.13,
+        11,
+        -7.13,
+        -12
+    ],
+    "file_specific_options": [
+        {
+            "recordingId": 2,
+            "disregard_time": [
+                [
+                    175.0,
+                    220.0
+                ]
+            ],
+            "coordinate_system": [
+                "lon",
+                "lat"
+            ]
+        }
+    ]
+}

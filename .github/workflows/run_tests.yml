@@ -1,0 +1,207 @@
+# GHA workflow
+
+on:
+    pull_request:
+        branches:
+            - master
+    workflow_dispatch:
+defaults:
+    run:
+        shell: bash
+
+jobs:
+    tests:
+        name: "${{ matrix.py }} on ${{ matrix.os }}"
+        runs-on: "${{ matrix.os }}-latest"
+        # env:
+          # SUMO_HOME: /usr/share/sumo
+        strategy:
+            matrix:
+                py:
+#                    - "3.7"
+                    - "3.8"
+#                     - "3.9"
+                os:
+                    - ubuntu
+                    - windows
+
+        outputs:
+          output1: ${{ steps.tests_ubuntu.outputs.test_status }}
+          output2: ${{ steps.tests_windows.outputs.test_status }}
+        steps:
+            - name: "prepare"
+              uses: "actions/checkout@v2"
+            - name: "prepare"
+              if: matrix.os == 'ubuntu'
+              run: |
+                sudo add-apt-repository ppa:sumo/stable
+                sudo apt-get update
+                # sudo apt install sumo
+            - name: "install sumo ubuntu 1"
+              if: matrix.os == 'ubuntu'
+              uses: awalsh128/cache-apt-pkgs-action@latest
+              with:
+                packages: sumo 
+                version: 1.16.0
+            - name: "install sumo ubuntu 2"
+              if: matrix.os == 'ubuntu'
+              run: |
+                echo "SUMO_HOME=/usr/share/sumo" >> $GITHUB_ENV
+            - name: sumo-cache
+              if: matrix.os == 'Windows'
+              uses: actions/cache@v3
+              with:
+               path: ./sumo-1.16.0 # cache all sumo files
+               key: sumo_cache
+            - name: install sumo windows
+              if: matrix.os == 'Windows'
+              run: |
+                if [ ! -d sumo-1.16.0 ]; then curl --output sumo.zip --url https://master.dl.sourceforge.net/project/sumo/sumo/version%201.16.0/sumo-win64-1.16.0.zip?viasf=1 && 7z x sumo.zip;fi
+            # - name: "install sumo windows"
+            #   if: matrix.os == 'Windows'
+            #   shell:
+            #     powershell
+            #   run: |
+            #     echo "SUMO_HOME=$(pwd)\sumo-1.16.0" >> $GITHUB_ENV
+            - name: "python setup"
+              uses: "actions/setup-python@v4"
+              with:
+                python-version: "${{ matrix.py }}"
+            - name: "testing-dependencies"
+              run: |
+                    python -m pip install tox pytest pytest-cov coverage
+            - name: "TARGET/${{ matrix.py  }}"
+              continue-on-error: true
+              id: tox_status_win
+              if: matrix.os == 'Windows'
+              shell:
+                powershell
+              run: |
+                # echo "$(pwd)\sumo-1.16.0"
+                # echo "SUMO_HOME=$(pwd)\sumo-1.16.0" >> $env:GITHUB_ENV
+                $env:SUMO_HOME = "$(pwd)\sumo-1.16.0"
+                $env:Path += ";$(pwd)\sumo-1.16.0\bin"
+                sumo --version
+                python -m tox
+            - name: "TARGET/${{ matrix.py  }}"
+              continue-on-error: true
+              id: tox_status_ubuntu
+              if: matrix.os == 'ubuntu'
+              shell:
+                bash
+              run: |
+                sumo --version
+                python -m tox
+            - name: "result linux"
+              if: matrix.os == 'ubuntu'
+              id: tests_ubuntu
+              run: |
+                mkdir -p artifacts/
+                if ${{ steps.tox_status_ubuntu.outcome != 'success' }}; then
+                  echo "TESTS=FAILED" >> $GITHUB_ENV
+                  echo "TESTS_COLOR=red" >> $GITHUB_ENV
+                  cp .coverage artifacts/.coverage_ubuntu
+                  echo "test_status=FAILED" >> $GITHUB_OUTPUT
+                else
+                  echo "TESTS=PASSED" >> $GITHUB_ENV
+                  echo "TESTS_COLOR=green" >> $GITHUB_ENV
+                  cp .coverage artifacts/.coverage_ubuntu
+                  echo "test_status=PASSED" >> $GITHUB_OUTPUT
+                fi
+            - name: "result windows"
+              if: matrix.os == 'Windows'
+              id: tests_windows
+              run: |
+                mkdir -p artifacts/
+                if ${{ steps.tox_status_win.outcome != 'success' }}; then
+                  echo "TESTS=FAILED" >> $GITHUB_ENV
+                  echo "TESTS_COLOR=red" >> $GITHUB_ENV
+                  cp .coverage artifacts/.coverage_windows
+                  echo "test_status=FAILED" >> $GITHUB_OUTPUT
+                else
+                  echo "TESTS=PASSED" >> $GITHUB_ENV
+                  echo "TESTS_COLOR=green" >> $GITHUB_ENV
+                  cp .coverage artifacts/.coverage_windows
+                  echo "test_status=PASSED" >> $GITHUB_OUTPUT
+                fi
+            - name: "store coverage"
+              if: matrix.os == 'Windows'
+              uses: actions/upload-artifact@master
+              with:
+                name: coverage_windows
+                path: artifacts/.coverage_windows
+            - name: "store coverage"
+              if: matrix.os == 'ubuntu'
+              uses: actions/upload-artifact@master
+              with:
+                name: coverage_ubuntu
+                path: artifacts/.coverage_ubuntu
+    
+    coverage:
+        needs: tests
+        name: "coverage publishing"
+        runs-on: "ubuntu-latest"
+        strategy:
+          matrix:
+              py:
+                  - "3.10"
+        steps:
+          - name: "prepare"
+            uses: "actions/checkout@v2"
+          - name: "download coverage windows"
+            uses: actions/download-artifact@master
+            with:
+              name: coverage_windows
+              path: ./
+          - name: "download coverage ubuntu"
+            uses: actions/download-artifact@master
+            with:
+              name: coverage_ubuntu
+              path: ./
+          - name: "get coverage"
+            if: always()
+            continue-on-error: true
+            run: |
+              pip install tox pytest coverage pylint
+              python -m coverage --version
+              mv .coverage_ubuntu .coverage
+              python -m coverage combine .coverage .coverage_windows
+              echo "COVERAGE=0%" >> $GITHUB_ENV
+              echo "COVERAGE_COLOR=red" >> $GITHUB_ENV
+              ls -la
+              python -m coverage report -i
+              echo "COVERAGE=$(python -m coverage report -i | awk '/TOTAL/ {print $6}')" >> $GITHUB_ENV
+              echo $(python -m  coverage report -i | awk '/TOTAL/ {print substr($6, 1, length($6)-1) }' ) | python -c "import sys;print('COVERAGE_COLOR=green') if float(sys.stdin.read()) > 80 else print('COVERAGE_COLOR=red')" >> $GITHUB_ENV
+          - name: "get tests"
+            if: always()
+            continue-on-error: true
+            run: |
+              echo ${{ needs.tests.outputs.output1 }}
+              echo ${{ needs.tests.outputs.output2 }}
+              if ${{ needs.tests.outputs.output1 != 'PASSED' && needs.tests.outputs.output2 != 'PASED' }}; then
+                  echo "TESTS=FAILED" >> $GITHUB_ENV
+                  echo "TESTS_COLOR=red" >> $GITHUB_ENV
+              else
+                echo "TESTS=PASSED" >> $GITHUB_ENV
+                echo "TESTS_COLOR=green" >> $GITHUB_ENV
+              fi
+          - name: Create Coverage Badge
+            if: always()
+            uses: schneegans/dynamic-badges-action@v1.6.0
+            with:
+              auth: ${{ secrets.GIST_SECRET }}
+              gistID: 294e13317bfd466118101ec156067757
+              filename: pycalibration_tool_coverage.json
+              label: Coverage
+              message: ${{ env.COVERAGE }}
+              color: ${{ env.COVERAGE_COLOR }}
+          - name: Create TESTS Badge
+            if: always()
+            uses: schneegans/dynamic-badges-action@v1.6.0
+            with:
+              auth: ${{ secrets.GIST_SECRET }}
+              gistID: 00d7e970025d1bf6f150568dc326c50d
+              filename: pycalibration_tool_tests.json
+              label: Tests
+              message: ${{ env.TESTS }}
+              color: ${{ env.TESTS_COLOR }}

@@ -1,0 +1,22 @@
+# https://matplotlib.org/stable/tutorials/introductory/customizing.html
+patch.edgecolor: f8f8f2
+axes.facecolor: 282a36
+axes.labelcolor: f8f8f2
+axes.edgecolor: f8f8f2
+xtick.color: f8f8f2
+ytick.color: f8f8f2
+legend.framealpha: 0.8
+grid.color: 6272a4
+figure.facecolor: 282a36
+figure.edgecolor: 282a36
+boxplot.boxprops.color: f8f8f2
+boxplot.capprops.color: f8f8f2
+boxplot.flierprops.color: f8f8f2
+boxplot.flierprops.markeredgecolor: f8f8f2
+boxplot.whiskerprops.color: f8f8f2
+axes.grid: True
+# axes.prop_cycle: []
+xtick.minor.visible: True
+ytick.minor.visible: True
+scatter.marker: +
+errorbar.capsize: 3

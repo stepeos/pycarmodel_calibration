@@ -1,0 +1,16 @@
+[run]
+branch = 1
+relative_files = True
+[paths]
+omit = tests/*
+[report]
+skip_covered = True
+exclude_lines =
+    \#\s*pragma: no cover
+    ^\s*raise NotImplementedError\b
+    ^\s*return NotImplemented\b
+    ^\s*assert False(,|$)
+    ^\s*assert_never\(
+    @(abc\.)?abstractmethod
+    ^\s*if TYPE_CHECKING:
+    ^\s*@overload( |$)

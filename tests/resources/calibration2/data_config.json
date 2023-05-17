@@ -1,0 +1,52 @@
+{
+    "data_file_regex": ".*_trajectories.csv",
+    "lanes": [0],
+    "fps": 25,
+    "intersection_points_xy": [
+        1970.0,
+        0.0,
+        1970.0,
+        2100.0
+    ],
+    "file_specific_options": [
+        {
+            "recordingId": 1,
+            "coordinate_system": [
+                "xCenter",
+                "yCenter"
+            ]
+        }
+    ],
+    "metafile_replace": [".", "_meta."],
+    "df_config": {
+        "vehicle_id": {
+            "new_name": "trackId"
+        },
+        "vehicle_speed": {
+            "new_name": "speed",
+            "is_numeric": true
+        },
+        "vehicle_x": {
+            "new_name": "xCenter",
+            "is_numeric": true
+        },
+        "vehicle_y": {
+            "new_name": "yCenter",
+            "is_numeric": true
+        },
+        "timestep_time": {
+            "new_name": "time",
+            "is_numeric": true
+        },
+        "vehicle_acceleration": {
+            "new_name": "acc",
+            "is_numeric": true
+        },
+        "vehicle_lane": {
+            "new_name": "lane"
+        },
+        "vehicle_type": {
+            "class": "lane"
+        }
+    }
+}
