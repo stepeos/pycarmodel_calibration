@@ -191,7 +191,7 @@ jobs:
             with:
               auth: ${{ secrets.GIST_SECRET }}
               gistID: 294e13317bfd466118101ec156067757
-              filename: pycalibration_tool_coverage.json
+              filename: pycarmodel_calibration_coverage.json
               label: Coverage
               message: ${{ env.COVERAGE }}
               color: ${{ env.COVERAGE_COLOR }}
@@ -201,7 +201,7 @@ jobs:
             with:
               auth: ${{ secrets.GIST_SECRET }}
               gistID: 00d7e970025d1bf6f150568dc326c50d
-              filename: pycalibration_tool_tests.json
+              filename: pycarmodel_calibration_tests.json
               label: Tests
               message: ${{ env.TESTS }}
               color: ${{ env.TESTS_COLOR }}

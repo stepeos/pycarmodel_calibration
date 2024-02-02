@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
-plt.style.use(Path(__file__).parents[1] / "calibration_tool/data_config/matplotlib.rc")
+plt.style.use(Path(__file__).parents[1] / "carmodel_calibration/data_config/matplotlib.rc")
 data_dir = "/home/bookboi/Nextcloud/1_Docs/4_Master/20_Studienarbeit_paper/results/27_2_2023_SA_sobol/"
 data_path = Path(data_dir)
 param_keys = "speedFactor,minGap,accel,decel,startupDelay,tau,delta,tpreview,tPersDrive,tPersEstimate,treaction,ccoolness,jerkmax,epsilonacc,taccmax,Mflatness,Mbegin"

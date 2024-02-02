@@ -12,16 +12,16 @@ import scipy.optimize as op
 from scipy.stats import truncnorm
 from tqdm import tqdm
 
-from calibration_tool.fileaccess.parameter import EidmParameters, Parameters
-from calibration_tool.optimization import (target_factory,
+from carmodel_calibration.fileaccess.parameter import EidmParameters, Parameters
+from carmodel_calibration.optimization import (target_factory,
                                            _vectorized_target)
-from calibration_tool.sumo.simulation_module import SumoInterface
-from calibration_tool.sumo.sumo_project import SumoProject
-from calibration_tool.control_program.simulation_handler import SimulationHandler
-from calibration_tool.control_program.calibration_analysis import (
+from carmodel_calibration.sumo.simulation_module import SumoInterface
+from carmodel_calibration.sumo.sumo_project import SumoProject
+from carmodel_calibration.control_program.simulation_handler import SimulationHandler
+from carmodel_calibration.control_program.calibration_analysis import (
     create_calibration_analysis)
-from calibration_tool.helpers import (_estimate_parameters)
-from calibration_tool.exceptions import OptimizationFailed
+from carmodel_calibration.helpers import (_estimate_parameters)
+from carmodel_calibration.exceptions import OptimizationFailed
 
 _LOGGER = logging.getLogger(__name__)
 ITERATION = 0

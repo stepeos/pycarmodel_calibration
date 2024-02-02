@@ -7,9 +7,9 @@ import os
 import numpy as np
 import pandas as pd
 
-# from calibration_tool.exceptions import OptimizationFailed
-from calibration_tool.fileaccess.parameter import EidmParameters
-from calibration_tool.sumo.sumo_project import SumoProject
+# from carmodel_calibration.exceptions import OptimizationFailed
+from carmodel_calibration.fileaccess.parameter import EidmParameters
+from carmodel_calibration.sumo.sumo_project import SumoProject
 
 _LOGGER = logging.getLogger(__name__)
 

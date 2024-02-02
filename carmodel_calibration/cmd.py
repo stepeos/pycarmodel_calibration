@@ -1,4 +1,4 @@
-"""command line entry point for pycalibration tool"""
+"""command line entry point for pycarmodel_calibration tool"""
 
 import os
 import sys
@@ -9,15 +9,15 @@ import json
 
 sys.path.append(str(Path(__file__).parents[1]))
 
-from calibration_tool.control_program.calibration_handling import (
+from carmodel_calibration.control_program.calibration_handling import (
     CalibrationHandler)
-from calibration_tool.control_program.sensitivity_analysis import (
+from carmodel_calibration.control_program.sensitivity_analysis import (
     SensitivityAnalysisHandler)
-from calibration_tool.logging_config import configure_logging
-from calibration_tool.exceptions import MissingRequirements
-from calibration_tool.control_program.calibration_analysis import (
+from carmodel_calibration.logging_config import configure_logging
+from carmodel_calibration.exceptions import MissingRequirements
+from carmodel_calibration.control_program.calibration_analysis import (
     create_calibration_analysis)
-from calibration_tool.data_integration.data_set import DataSet
+from carmodel_calibration.data_integration.data_set import DataSet
 
 def _chunker(seq, size):
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))

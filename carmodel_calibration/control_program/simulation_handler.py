@@ -8,13 +8,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from calibration_tool.data_integration.case_identification import (
+from carmodel_calibration.data_integration.case_identification import (
     car_at_redlight, following_cars)
-from calibration_tool.data_integration.data_set import DataSet
-from calibration_tool.fileaccess.parameter import Parameters
-from calibration_tool.logging_config import configure_logging
-from calibration_tool.sumo.simulation_module import SumoInterface
-from calibration_tool.sumo.sumo_project import SumoProject
+from carmodel_calibration.data_integration.data_set import DataSet
+from carmodel_calibration.fileaccess.parameter import Parameters
+from carmodel_calibration.logging_config import configure_logging
+from carmodel_calibration.sumo.simulation_module import SumoInterface
+from carmodel_calibration.sumo.sumo_project import SumoProject
 
 
 configure_logging()

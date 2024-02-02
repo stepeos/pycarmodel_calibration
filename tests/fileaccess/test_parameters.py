@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest import TestCase
 import json
 
-from calibration_tool.fileaccess.parameter import (Parameters, IdmParameters, 
+from carmodel_calibration.fileaccess.parameter import (Parameters, IdmParameters, 
     ModelEnum)
 from tests.testhelpers import flatten, chdir
 

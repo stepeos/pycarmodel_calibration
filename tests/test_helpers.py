@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 import pandas as pd
 import numpy as np
-from calibration_tool.helpers import _estimate_parameters
+from carmodel_calibration.helpers import _estimate_parameters
 
 np.random.seed(0)
 

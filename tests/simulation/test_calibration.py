@@ -9,7 +9,7 @@ from scipy.optimize._optimize import OptimizeResult
 from mock import MagicMock, patch
 import numpy as np
 
-from calibration_tool.control_program.calibration_handling import (
+from carmodel_calibration.control_program.calibration_handling import (
     CalibrationHandler)
 
 def _mock_optimization_factory(result, mode="scipy"):
@@ -68,8 +68,8 @@ class TestCalibrationHandler(TestCase):
                            num_workers=self.num_workers,
                            project_path=self.project_path)
 
-    @patch("calibration_tool.simulation.calibration_handling.op")
-    @patch("calibration_tool.simulation.calibration_handling.SumoInterface")
+    @patch("carmodel_calibration.simulation.calibration_handling.op")
+    @patch("carmodel_calibration.simulation.calibration_handling.SumoInterface")
     def test_calibration_direct(self, _, scipy_op):
         """running calibration with direct optimization"""
         scipy_op.direct.return_value = OptimizeResult(
@@ -90,8 +90,8 @@ class TestCalibrationHandler(TestCase):
         self.assertTrue(len(result)>0)
         self.assertTrue(all(result["weightedError"]==1))
 
-    @patch("calibration_tool.simulation.calibration_handling.op")
-    @patch("calibration_tool.simulation.calibration_handling.SumoInterface")
+    @patch("carmodel_calibration.simulation.calibration_handling.op")
+    @patch("carmodel_calibration.simulation.calibration_handling.SumoInterface")
     def test_calibration_differential_evolution(self, _, scipy_op):
         """running calibration with differential evolution optimization"""
         result = OptimizeResult(
@@ -113,9 +113,9 @@ class TestCalibrationHandler(TestCase):
         self.assertTrue(len(result)>0)
         self.assertTrue(all(result["weightedError"]==1))
 
-    @patch("calibration_tool.simulation.calibration_handling.op")
-    @patch("calibration_tool.simulation.calibration_handling.pygad")
-    @patch("calibration_tool.simulation.calibration_handling.SumoInterface")
+    @patch("carmodel_calibration.simulation.calibration_handling.op")
+    @patch("carmodel_calibration.simulation.calibration_handling.pygad")
+    @patch("carmodel_calibration.simulation.calibration_handling.SumoInterface")
     def test_calibration_genetic_algorithm(self, _, pygad, scipy_op):
         """running calibration with genetic aglorithm optimization"""
         result = OptimizeResult(

@@ -3,7 +3,7 @@
 import json
 import logging
 
-from calibration_tool.fileaccess.fileaccess import File
+from carmodel_calibration.fileaccess.fileaccess import File
 
 _LOGGER = logging.getLogger(__name__)
 

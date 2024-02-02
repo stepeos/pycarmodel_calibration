@@ -10,9 +10,9 @@ import pandas as pd
 from collections import Counter
 from scipy.signal import find_peaks
 from scipy.interpolate import interp1d
-from calibration_tool.data_integration.helper import (
+from carmodel_calibration.data_integration.helper import (
     get_lane, get_angle, get_difference)
-from calibration_tool.helpers import _get_starting_time, _get_vehicle_meta_data
+from carmodel_calibration.helpers import _get_starting_time, _get_vehicle_meta_data
 
 
 def _get_distance_df(leader_chunk: pd.DataFrame, follower_chunk: pd.DataFrame):

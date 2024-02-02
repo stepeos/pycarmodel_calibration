@@ -9,7 +9,7 @@ from mock import MagicMock, patch
 import numpy as np
 from multiprocessing.pool import ThreadPool
 
-from calibration_tool.control_program.sensitivity_analysis import (
+from carmodel_calibration.control_program.sensitivity_analysis import (
     SensitivityAnalysisHandler)
 
 def imap_mock(_, __, samples):

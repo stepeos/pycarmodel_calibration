@@ -9,10 +9,10 @@ from scipy.optimize._optimize import OptimizeResult
 from mock import MagicMock, patch
 import numpy as np
 
-from calibration_tool.control_program.calibration_handling import SimulationHandler
-from calibration_tool.control_program.simulation_handler import get_weighted_errors
-from calibration_tool.fileaccess.parameter import Parameters, EidmParameters
-from calibration_tool.optimization import measure_of_performance_factory
+from carmodel_calibration.control_program.calibration_handling import SimulationHandler
+from carmodel_calibration.control_program.simulation_handler import get_weighted_errors
+from carmodel_calibration.fileaccess.parameter import Parameters, EidmParameters
+from carmodel_calibration.optimization import measure_of_performance_factory
 
 
 class TestSimulationandler(TestCase):

@@ -11,11 +11,11 @@ import regex as re
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
-from calibration_tool.data_integration.helper import (get_frame, get_heading,
+from carmodel_calibration.data_integration.helper import (get_frame, get_heading,
                                                       get_lane, moving_average)
-from calibration_tool.data_integration.integrator import Integrator
-from calibration_tool.fileaccess.configs import JSON
-from calibration_tool.helpers import _get_vehicle_meta_data
+from carmodel_calibration.data_integration.integrator import Integrator
+from carmodel_calibration.fileaccess.configs import JSON
+from carmodel_calibration.helpers import _get_vehicle_meta_data
 
 warnings.filterwarnings('ignore', message="^Columns.*")
 _LOGGER = logging.getLogger(__name__)

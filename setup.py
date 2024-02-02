@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 setup_dic = dict(
-    name="calibration_tool",
+    name="carmodel_calibration",
     description="a tool for calibration car-following models using sumo",
     author="Steve Oswald",
     author_email="stevepeter.oswald@gmail.com",
@@ -10,12 +10,12 @@ setup_dic = dict(
     version=0.1,
     entry_points={
         'console_scripts': [
-            'calibration-tool = calibration_tool.cmd:main'
+            'carmodel-calibration = carmodel_calibration.cmd:main'
         ],
     },
     license="GPL-3.0",
     project_urls={
-        'Issues': 'https://github.com/stepeos/pycalibration_tool/issues'
+        'Issues': 'https://github.com/stepeos/pycarmodel_calibration/issues'
     },install_requires=[
         'pandas',
         'scipy',

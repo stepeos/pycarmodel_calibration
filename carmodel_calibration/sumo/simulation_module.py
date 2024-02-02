@@ -15,11 +15,11 @@ from random import randint
 import numpy as np
 import pandas as pd
 
-from calibration_tool.data_integration.data_set import DataSet
-from calibration_tool.exceptions import (FolderNotFound, MissingConfiguration,
+from carmodel_calibration.data_integration.data_set import DataSet
+from carmodel_calibration.exceptions import (FolderNotFound, MissingConfiguration,
                                          MultipleConfigurations)
-from calibration_tool.helpers import _get_starting_time, _get_vehicle_meta_data
-from calibration_tool.sumo.sumo_project import SumoProject
+from carmodel_calibration.helpers import _get_starting_time, _get_vehicle_meta_data
+from carmodel_calibration.sumo.sumo_project import SumoProject
 
 _LOGGER = logging.getLogger(__name__)
 # pylint: disable=C0103,W0603

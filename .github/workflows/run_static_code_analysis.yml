@@ -28,7 +28,7 @@ jobs:
               continue-on-error: true
               id: tox_status
               run: |
-                cd calibration_tool
+                cd carmodel_calibration
                 python -m tox -e lint
             - name: "result"
               if: always()
@@ -47,7 +47,7 @@ jobs:
               with:
                 auth: ${{ secrets.GIST_SECRET }}
                 gistID: a9924565e021b9c897e7e89e3ea4163b
-                filename: pycalibration_tool_linting.json
+                filename: pycarmodel_calibration_linting.json
                 label: Pylint
                 message: ${{ env.Pylint }}
                 color: ${{ env.Pylint_Color }}

@@ -6,11 +6,11 @@ import unittest
 import shutil
 import pandas as pd
 
-from calibration_tool.sumo.simulation_module import SumoInterface
-from calibration_tool.sumo.sumo_project import SumoProject
-from calibration_tool.optimization import (
+from carmodel_calibration.sumo.simulation_module import SumoInterface
+from carmodel_calibration.sumo.sumo_project import SumoProject
+from carmodel_calibration.optimization import (
     measure_of_performance_factory, TargetCollector)
-from calibration_tool.fileaccess.parameter import Parameters
+from carmodel_calibration.fileaccess.parameter import Parameters
 
 def get_simulation_result():
     """test helper for getting simulation results"""

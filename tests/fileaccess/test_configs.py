@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest import TestCase
 import json
 
-from calibration_tool.fileaccess.configs import JSON
+from carmodel_calibration.fileaccess.configs import JSON
 from tests.testhelpers import flatten, chdir
 
 test_values = {

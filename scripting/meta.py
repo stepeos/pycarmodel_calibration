@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from calibration_tool.data_integration.data_set import DataSet
+from carmodel_calibration.data_integration.data_set import DataSet
 DATA_DIR = "/home/bookboi/Nextcloud/1_Docs/4_Master/20_Studienarbeit_paper/data/datensatz_dominik/2 (copy)/"
 data_path = Path(DATA_DIR)
 dtypes = {"ID": str}

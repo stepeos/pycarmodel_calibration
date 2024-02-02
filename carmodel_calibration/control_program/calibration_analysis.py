@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from calibration_tool.fileaccess.parameter import EidmParameters
-from calibration_tool.optimization import (_get_results, factory_wrapper)
-from calibration_tool.sumo.simulation_module import SumoInterface
-from calibration_tool.sumo.sumo_project import SumoProject
+from carmodel_calibration.fileaccess.parameter import EidmParameters
+from carmodel_calibration.optimization import (_get_results, factory_wrapper)
+from carmodel_calibration.sumo.simulation_module import SumoInterface
+from carmodel_calibration.sumo.sumo_project import SumoProject
 
 
 def _get_param_set(results_chunk: pd.DataFrame, iteration: int) -> dict:

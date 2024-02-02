@@ -5,12 +5,12 @@ from pathlib import Path
 import shutil
 import numpy as np
 
-from calibration_tool.sumo.simulation_module import SumoInterface
-# from calibration_tool.optimization import factory_wrapper
-from calibration_tool.control_program.calibration_analysis import (
+from carmodel_calibration.sumo.simulation_module import SumoInterface
+# from carmodel_calibration.optimization import factory_wrapper
+from carmodel_calibration.control_program.calibration_analysis import (
     _simulate_single, _plot_single, create_calibration_analysis,
     _get_unique_calibrations)
-from calibration_tool.sumo.sumo_project import SumoProject
+from carmodel_calibration.sumo.sumo_project import SumoProject
 
 def create_results():
     results = {"iteration": {0: 1, 1: 2},

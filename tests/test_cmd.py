@@ -5,9 +5,9 @@ from pathlib import Path
 from mock import MagicMock, patch
 import unittest
 
-from calibration_tool.cmd import main
-from calibration_tool.exceptions import MissingRequirements
-from calibration_tool.control_program.calibration_handling import (
+from carmodel_calibration.cmd import main
+from carmodel_calibration.exceptions import MissingRequirements
+from carmodel_calibration.control_program.calibration_handling import (
     CalibrationHandler)
 
 class TestMain(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestMain(unittest.TestCase):
                     "--num-workers=4"]
         self.assertRaises(FileNotFoundError, main)
 
-    @patch("calibration_tool.cmd.CalibrationHandler")
+    @patch("carmodel_calibration.cmd.CalibrationHandler")
     def test_action_calibrate_de(self, handler_mock):
         sys.argv = ["script_name", "--action=calibrate",
                     str(self.resources),
@@ -52,7 +52,7 @@ class TestMain(unittest.TestCase):
         main()
         handler_mock_instance.run_calibration_cli.assert_called_once()
 
-    @patch("calibration_tool.cmd.CalibrationHandler")
+    @patch("carmodel_calibration.cmd.CalibrationHandler")
     def test_action_calibrate_ga(self, handler_mock):
         sys.argv = ["script_name", "--action=calibrate",
                     str(self.resources),
@@ -66,7 +66,7 @@ class TestMain(unittest.TestCase):
         handler_mock_instance.run_calibration_cli.assert_called_once()
 
     @patch.object(sys, "exit")
-    @patch("calibration_tool.cmd.CalibrationHandler")
+    @patch("carmodel_calibration.cmd.CalibrationHandler")
     def test_action_calibrate_direct(self, handler_mock, sys_mock):
         sys.argv = ["script_name", "--action=calibrate",
                     str(self.resources),

@@ -9,8 +9,8 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 import warnings
 
-from calibration_tool.fileaccess.parameter import EidmParameters
-from calibration_tool.logging_config import configure_logging
+from carmodel_calibration.fileaccess.parameter import EidmParameters
+from carmodel_calibration.logging_config import configure_logging
 
 configure_logging()
 _LOGGER = logging.getLogger(__name__)

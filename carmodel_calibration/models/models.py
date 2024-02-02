@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Type
 
-from calibration_tool.fileaccess.parameter import Parameters, ModelEnum
+from carmodel_calibration.fileaccess.parameter import Parameters, ModelEnum
 
 class TrafficFollowingModel(ABC):
     """class to handle traffic following model"""

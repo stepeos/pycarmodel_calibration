@@ -9,10 +9,10 @@ import unittest
 import shutil
 import pandas as pd
 
-from calibration_tool.sumo.simulation_module import SumoInterface
-from calibration_tool.sumo.sumo_project import SumoProject
-from calibration_tool.exceptions import FolderNotFound, MissingConfiguration
-from calibration_tool.fileaccess.parameter import Parameters
+from carmodel_calibration.sumo.simulation_module import SumoInterface
+from carmodel_calibration.sumo.sumo_project import SumoProject
+from carmodel_calibration.exceptions import FolderNotFound, MissingConfiguration
+from carmodel_calibration.fileaccess.parameter import Parameters
 
 
 class TestSumoInterface(unittest.TestCase):
@@ -72,7 +72,7 @@ class TestSumoInterface(unittest.TestCase):
                                                 self.leader_follower_path)
             self.sumo_interface.start_simulation_module()
 
-    @patch("calibration_tool.sumo.sumo_interface.traci")
+    @patch("carmodel_calibration.sumo.sumo_interface.traci")
     def test_serialized(self, traci_mock):
         traci_mock = MagicMock()
         self.sumo_interface = SumoInterface(self.sumo_project_path,

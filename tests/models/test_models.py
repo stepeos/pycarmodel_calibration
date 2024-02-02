@@ -7,8 +7,8 @@ import os
 from pathlib import Path
 from mock import MagicMock
 
-from calibration_tool.models.models import TrafficFollowingModel, Idm
-from calibration_tool.fileaccess.parameter import ModelEnum
+from carmodel_calibration.models.models import TrafficFollowingModel, Idm
+from carmodel_calibration.fileaccess.parameter import ModelEnum
 from tests.testclass_helper import TmpDir
 
 

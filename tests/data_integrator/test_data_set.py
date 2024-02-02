@@ -10,7 +10,7 @@ import shutil
 import matplotlib.pyplot as plt
 from mock import patch
 
-from calibration_tool.data_integration.data_set import DataSet
+from carmodel_calibration.data_integration.data_set import DataSet
 from tests.testhelpers import chdir
 
 TEST_DATA = {"col1": range(10,0, -1),

@@ -10,11 +10,11 @@ from SALib import ProblemSpec
 import matplotlib.pyplot as plt
 import matplotlib.backends.backend_pdf
 
-from calibration_tool.fileaccess.parameter import EidmParameters, Parameters
-from calibration_tool.sumo.simulation_module import SumoInterface
-from calibration_tool.sumo.sumo_project import SumoProject
-from calibration_tool.control_program.simulation_handler import SimulationHandler
-from calibration_tool.optimization import (_vectorized_target)
+from carmodel_calibration.fileaccess.parameter import EidmParameters, Parameters
+from carmodel_calibration.sumo.simulation_module import SumoInterface
+from carmodel_calibration.sumo.sumo_project import SumoProject
+from carmodel_calibration.control_program.simulation_handler import SimulationHandler
+from carmodel_calibration.optimization import (_vectorized_target)
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ from enum import Enum
 import numpy as np
 from scipy.optimize import LinearConstraint
 
-from calibration_tool.fileaccess.configs import JSON
+from carmodel_calibration.fileaccess.configs import JSON
 
 
 class ModelEnum(Enum):

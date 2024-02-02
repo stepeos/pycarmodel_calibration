@@ -8,11 +8,11 @@ from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import matplotlib.backends.backend_pdf
 
-from calibration_tool.helpers import (_get_vehicle_meta_data, _acceleration_curve_factory,
+from carmodel_calibration.helpers import (_get_vehicle_meta_data, _acceleration_curve_factory,
                                       _get_starting_time)
-from calibration_tool.data_integration.case_identification import following_cars
-from calibration_tool.data_integration.data_set import DataSet
-rc_file = Path(__file__).parents[1] / "calibration_tool/data_config/matplotlib.rc"
+from carmodel_calibration.data_integration.case_identification import following_cars
+from carmodel_calibration.data_integration.data_set import DataSet
+rc_file = Path(__file__).parents[1] / "carmodel_calibration/data_config/matplotlib.rc"
 plt.style.use(rc_file)
 data_set = DataSet(Path(os.environ["DATA_DIR"]))
 data_set.interactive_plot(2)
