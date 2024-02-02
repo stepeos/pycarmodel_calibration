@@ -5,7 +5,7 @@
 ## CLI usage
 Use `carmodel-calibration --help` for help. The help updates the information displayed for different actions, e.g. `carmodel-calibration --action=calibration --help` will have different options.
 ```
-usage: cmd.py Data-Directory Output-Directory differential_evolution [-h] [--num-workers NUM_WORKERS] [--population-size POPULATION_SIZE] [--max-iter MAX_ITER] [--models MODELS]
+usage: carmodel-calibration Data-Directory Output-Directory differential_evolution [-h] [--num-workers NUM_WORKERS] [--population-size POPULATION_SIZE] [--max-iter MAX_ITER] [--models MODELS]
                                                                      [--param-keys PARAM_KEYS] [--force-selection] [--no-report]
 
 optional arguments:
