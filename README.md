@@ -2,7 +2,7 @@
 
 # Pycarmodel_calibration
 This carmodel calibration tool was developed for my student thesis. The purpose is to calibrate the Extended Intelligent Driver Model (EIDM) from dron data. The private dataset contains drone footage of vehicles driving off at an intersection, similiar to [this video](https://www.youtube.com/watch?v=Vz4f8Gy6P1Q).
-The calibration tool would first find a selection of vehicles in pairs, each one containing a leader and a follower. Using SUMO to simulate the EIDM behavior, an optimization algorithm finds the best set of parameters from the dataset's trajectory. The leader's trajectory is the input and the follower's trajectory is simulated. The basis if calibration is the deviation between the follower's simulated trajectory to the real follower's trajectory.
+The calibration tool would first find a selection of vehicles in pairs, each one containing a leader and a follower. Using [SUMO](https://eclipse.dev/sumo/) to simulate the EIDM behavior, an optimization algorithm finds the best set of parameters from the dataset's trajectory. The leader's trajectory is the input and the follower's trajectory is simulated. The basis if calibration is the deviation between the follower's simulated trajectory to the real follower's trajectory.
 
 
 ## CLI usage
