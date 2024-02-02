@@ -104,19 +104,19 @@ class DataSet(Integrator):
             # TODO: implement speed calculation
             data["speed"] = None
             for track_id in data["trackId"].unique():
-                data_chunk = data[data["trackId"]==track_id]
+                data_chunk = data[data["trackId"]==track_id].copy()
                 dx = data_chunk["xCenter"].diff()
                 dy = data_chunk["yCenter"].diff() 
                 delta = np.sqrt(dx**2 + dy**2)
                 time_diff = data_chunk["time"].diff()
                 data_chunk.loc[:, "speed"] = delta / time_diff
                 window_size = 3
-                data_chunk.loc[:, "speed"] = data_chunk["speed"].rolling(
+                data_chunk.loc[:, "speed"] = data_chunk.loc[:, "speed"].rolling(
                     window=window_size, center=True).mean()
-                data_chunk.loc[:, "speed"] = data_chunk["speed"].fillna(
-                    method='bfill')
-                data_chunk.loc[:, "speed"] = data_chunk["speed"].fillna(
-                    method='ffill')
+                data_chunk.loc[:, "speed"].fillna(
+                    method='bfill', inplace=True)
+                data_chunk.loc[:, "speed"].fillna(
+                    method='ffill', inplace=True)
                 data.loc[data["trackId"]==track_id, "speed"] = (
                     data_chunk["speed"].fillna(
                     method='ffill'))

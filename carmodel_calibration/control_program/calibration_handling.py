@@ -4,6 +4,7 @@ import logging
 import time
 from contextlib import redirect_stdout
 from pathlib import Path
+import traceback
 
 import numpy as np
 import pandas as pd
