@@ -180,6 +180,7 @@ class CalibrationHandler(SimulationHandler):
                 _LOGGER.error("Optimization initialization failed for %s"
                               " with message %s",
                               identification, str(exc))
+                _LOGGER.error("Stack Trace: \n%s", traceback.format_exc())
                 continue
             iteration_results = self._tinker_results(
                 identification, result)
@@ -323,6 +324,10 @@ class CalibrationHandler(SimulationHandler):
                                     self.meta_data)
         x_0 = EidmParameters.get_defaults_dict(*args)
         self.x_0 = x_0
+        for key in self.param_keys:
+            if key not in x_0:
+                raise ValueError(
+                    f"Unknown key {key} give nas parma-keys option")
         x_optimizing = np.array([self.x_0[key] for key in self.param_keys])
         self.sumo_interface = sumo_interface
         proxy_objects = {

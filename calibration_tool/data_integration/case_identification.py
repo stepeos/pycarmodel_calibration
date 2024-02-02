@@ -47,7 +47,17 @@ def car_at_redlight(data: pd.DataFrame, lane_data: pd.DataFrame,
     time_step = np.mean(times[1:]-times[:-1])
     time_dist = np.rint(30 / (time_step))
     idxs = find_peaks(cars_stopped, distance=time_dist)[0]
-    times = intersection_peaks(data, lane_data, lanes=None)
+    if idxs.shape[0] == 0:
+        # every ten seconds
+        min_time = np.min(times)
+        max_time = np.max(times)
+        time_points = np.arange(min_time, max_time, 10)
+        times = np.sort(data["time"].unique())
+        idxs = np.array([np.argmin(np.abs(times - time_point))
+                        for time_point in time_points])
+        times = times[idxs]
+    else:
+        times = intersection_peaks(data, lane_data, lanes=None)
     scoped = data[
         (data["time"].isin(times))
         &(data["lane"]).isin(lanes)]
@@ -67,7 +77,7 @@ def car_at_redlight(data: pd.DataFrame, lane_data: pd.DataFrame,
     free_leaders_data = data[data["trackId"].isin(free_leaders)]
     for track_id, track_chunk in free_leaders_data.groupby(by="trackId"):
         # Check if every leader fulfills the criteria like class, going staight
-        if track_chunk["class"].iloc[0] not in ["Car", "Van"]:
+        if track_chunk["class"].iloc[0].lower() not in ["car", "van"]:
             free_leaders.remove(track_id)
             continue
         lane_vals = track_chunk["lane"].values
@@ -149,8 +159,9 @@ def euclidian_distance(pos1, pos2):
 
 def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
                    meta_data: pd.DataFrame, use_xy=False, lanes: list = None,
-                   classes : list = ["Car", "Van"]):
+                   classes : list = ["Car", "Van"], traffic_light_time=60):
     """gets the following cars"""
+    classes = [c.lower() for c in classes]
     if not lanes:
         lanes = np.unique(lane_data["trackId"])
     times = np.sort(data["time"].unique())[:2]
@@ -166,7 +177,8 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
         track_ids.append(track_id)
     trajectories = trajectories[trajectories["trackId"].isin(track_ids)]
     # get times as which most cars stop at the intersection
-    redlight_peaks = intersection_peaks(trajectories, lane_data, lanes)
+    redlight_peaks = intersection_peaks(
+        trajectories, lane_data, lanes, traffic_light_time)
     condition = (
         (trajectories["time"].isin(redlight_peaks))
         & (trajectories["lane"].isin(lanes))
@@ -190,8 +202,6 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
             sequence["distanceIntersectionCrossing"])
         sequence = sequence.sort_values(by="distanceIntersectionCrossing",
                                         ascending=True)
-        # if any(sequence["trackId"].isin(["109.0"])):
-        #     print("debug")
         sequence = sequence[~sequence["trackId"].isin(leaders)]
         sequence = sequence[sequence["dominantLane"]==group_name[1]]
         sequence["follower"] = np.roll(sequence["trackId"].values, -1)
@@ -211,6 +221,12 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
         return []
     pairs = pairs[pairs["class"].isin(classes)
                   & pairs["classFollower"].isin(classes)]
+    drop_reasons = {
+        "intersection_crossing_zero": [],
+        "not_going_straight_leader": [],
+        "not_going_straight_follower": [],
+        "signchanges_not_one": [],
+    }
     drop_pairs = []
     for leader, chunk in pairs.groupby(by=["leader"]):
         chunk = chunk.iloc[0]
@@ -218,14 +234,17 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
         lane = chunk["dominantLane"]
         if chunk["intersectionCrossing"] == 0:
             drop_pairs.append(leader)
+            drop_reasons["intersection_crossing_zero"].append(leader)
             continue
         recording_id = chunk["recordingId"]
         leader_chunk = data[data["trackId"]==leader]
         follower_chunk = data[data["trackId"]==follower]
         if not car_goes_straight(lane_data, follower_chunk):
             drop_pairs.append(leader)
+            drop_reasons["not_going_straight_follower"].append(follower)
             continue
         if not car_goes_straight(lane_data, leader_chunk):
+            drop_reasons["not_going_straight_leader"].append(leader)
             drop_pairs.append(leader)
             continue
         for chunk in [leader_chunk, follower_chunk]:
@@ -236,6 +255,7 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
             signchanges[0] = 0
             if np.sum(signchanges) != 1:
                 drop_pairs.append(leader)
+                drop_reasons["signchanges_not_one"].append(leader)
                 continue
         # accel_f = follower_chunk["acc"].values
         # accel_l = leader_chunk["acc"].values
@@ -300,7 +320,8 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
     return pairs[["leader", "follower"]].values
 
 
-def intersection_peaks(trajectories, lane_data, lanes=None):
+def intersection_peaks(trajectories, lane_data, lanes=None,
+                       traffic_light_time=60):
     # find peaks of when cars stop on lanes at the intersection
     # downscale time
     if lanes:
@@ -309,7 +330,7 @@ def intersection_peaks(trajectories, lane_data, lanes=None):
         selected_lanes = np.unique(lane_data["trackId"])
     conditions = (
         (trajectories["lane"].isin(selected_lanes))
-        & (trajectories["speed"]==0)
+        & (trajectories["speed"]<=0.5)
     )
     sorted_trajectories = trajectories[conditions].sort_values(by="time")
     cars_stopped = []
@@ -327,7 +348,7 @@ def intersection_peaks(trajectories, lane_data, lanes=None):
     time_step = np.mean(new_times[1:]-new_times[:-1])
     # we search for peaks every 60 seconds because of 60seconds traffic light
     # period
-    time_dist = np.rint(60 / (time_step))
+    time_dist = np.rint(traffic_light_time / (time_step))
     idxs = find_peaks(new_cars_stopped, distance=time_dist)[0]
     if idxs.shape[0] == 0:
         idxs = [0]

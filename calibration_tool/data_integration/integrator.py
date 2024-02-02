@@ -70,6 +70,7 @@ class Integrator(ABC):
         self._df_kwargs = self._config_file.get_value("df_kwargs") or {}
         self._metafile_replace = \
             self._config_file.get_value("metafile_replace") or ["", ""]
+            # traffic_light_time
 
     def get_file_specific_options(self, recording_id) -> dict:
         """gets the file specific options"""

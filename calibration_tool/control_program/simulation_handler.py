@@ -126,13 +126,15 @@ class SimulationHandler:
             _LOGGER.info("Free leaders %s.", free_leaders)
             coord = self._data_set.get_file_specific_options(rec).get(
                 "coordinate_system")
+            traffic_light_time = self._data_set.get_file_specific_options(
+                rec).get("traffic_light_time")
             if coord:
                 use_xy = (coord == ["xCenter", "yCenter"])
             else:
                 use_xy = False
-            for leader, foll in following_cars(data_frame, lane_data,
-                                               meta_data, use_xy,
-                                               lanes=lanes):
+            for leader, foll in following_cars(
+                data_frame, lane_data, meta_data, use_xy, lanes=lanes,
+                traffic_light_time=traffic_light_time):
                 entries.append((leader, foll))
                 pairs_count += 1
                 lane = (

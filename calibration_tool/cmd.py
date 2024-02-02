@@ -36,7 +36,15 @@ def main():
                 "Sumo Environment Variable points to non-existing Path:"
                 + os.environ.get("SUMO_HOME"))
     args_to_parse = sys.argv[1:]
-
+    args_to_parse = [
+        "--action=calibrate",
+        "/home/bookboi/Nextcloud/1_Docs/8_Coding/studienarbeit_nacharbeit/inD-dataset-v1.0/data/",
+        "/home/bookboi/Nextcloud/1_Docs/8_Coding/studienarbeit_nacharbeit/results/",
+        "differential_evolution",
+        "--population-size=200",
+        "--max-iter=100",
+        "--param-keys=speedFactor,minGap,accel,decel,startupDelay,tau,delta,tpreview,tPersDrive,tPersEstimate,treaction,ccoolness,jerkmax,epsilonacc,taccmax,Mflatness,Mbegin"
+    ]
     parser = _get_parser(args_to_parse)
 
     args = parser.parse_args(args_to_parse)

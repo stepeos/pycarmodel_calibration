@@ -83,43 +83,56 @@ class DataSet(Integrator):
             for operation, args in zip(ops, value.get("operations_args")):
                 if operation == "moving_average":
                     moving_average(data[[column]], args)
-        # if "heading" not in data.columns:
-        #     data["heading"] = None
-        #     data["heading"] = data["heading"].astype(float)
-        #     for track_id in data["trackId"].unique():
-        #         heading = get_heading(
-        #             data[data["trackId"]==track_id]["xCenter"].values,
-        #             data[data["trackId"]==track_id]["yCenter"].values)
-        #         try:
-        #             data.loc[data["trackId"]==track_id, "heading"] = heading
-        #         except ValueError as exc:
-        #             _LOGGER.error(exc)
-        #             raise exc
-        # if self._xy_is_not_center:
-        #     # xy data is on the middle of the front bumper
-        #     # TODO: adjust lon lat!
-        #     groups = data.groupby(["trackId"])
-        #     track_ids = np.array(list(groups.groups.keys()))
-        #     track_chunks = list(groups.groups.values())
-        #     for _, (track_id,chunk_ids) in enumerate(zip(track_ids, track_chunks)):
-        #         chunk = data.loc[chunk_ids]
-        #         ident = (track_id, None, recording_id)
-        #         vehicle_meta, _ = _get_vehicle_meta_data(meta_data, ident)
-        #         v_l, v_w = vehicle_meta["length"], vehicle_meta["width"]
-        #         fps = int(self._config_file.get_value("fps"))
-        #         heading = np.deg2rad(
-        #             np.array(chunk["heading"], dtype=np.float64))
-        #         heading_filtered = uniform_filter1d(heading,
-        #                          size=self._config_file.get_value("fps"))
-        #         for pos in range(0, len(chunk), fps):
-        #             x_chunk = chunk.iloc[pos:pos+fps]["xCenter"]
-        #             x_chunk = x_chunk.subtract(
-        #                 np.sin(heading_filtered[pos:pos+fps]) * v_l / 2)
-        #             data.loc[x_chunk.index]["xCenter"] = x_chunk.values
-        #             y_chunk = chunk.iloc[pos:pos+fps]["yCenter"]
-        #             y_chunk = y_chunk.subtract(
-        #                 np.sin(heading_filtered[pos:pos+fps]) * v_w / 2)
-        #             data.loc[y_chunk.index]["xCenter"] = y_chunk.values
+        if "heading" not in data.columns:
+            data["heading"] = None
+            data["heading"] = data["heading"].astype(float)
+            for track_id in data["trackId"].unique():
+                heading = get_heading(
+                    data[data["trackId"]==track_id]["xCenter"].values,
+                    data[data["trackId"]==track_id]["yCenter"].values)
+                try:
+                    data.loc[data["trackId"]==track_id, "heading"] = heading
+                except ValueError as exc:
+                    _LOGGER.error(exc)
+                    raise exc
+        if "time" not in data.columns and "frame" not in data.columns:
+            raise ValueError("data does not contain time nor frame")
+        if "time" not in data.columns:
+            data["time"] = (data["frame"].values
+                            / self._config_file.get_value("fps"))
+        if "speed" not in data.columns:
+            # TODO: implement speed calculation
+            data["speed"] = None
+            for track_id in data["trackId"].unique():
+                data_chunk = data[data["trackId"]==track_id]
+                dx = data_chunk["xCenter"].diff()
+                dy = data_chunk["yCenter"].diff() 
+                delta = np.sqrt(dx**2 + dy**2)
+                time_diff = data_chunk["time"].diff()
+                data_chunk.loc[:, "speed"] = delta / time_diff
+                window_size = 3
+                data_chunk.loc[:, "speed"] = data_chunk["speed"].rolling(
+                    window=window_size, center=True).mean()
+                data_chunk.loc[:, "speed"] = data_chunk["speed"].fillna(
+                    method='bfill')
+                data_chunk.loc[:, "speed"] = data_chunk["speed"].fillna(
+                    method='ffill')
+                data.loc[data["trackId"]==track_id, "speed"] = (
+                    data_chunk["speed"].fillna(
+                    method='ffill'))
+            # change to numeric
+            data["speed"] = pd.to_numeric(data["speed"], errors='coerce')
+        if "class" not in data.columns:
+            data["class"] = None
+            for track_id in data["trackId"].unique():
+                track_class = (
+                    meta_data[meta_data["trackId"]==track_id]["class"].iloc[0])
+                data.loc[data["trackId"]==track_id, "class"] = \
+                    track_class
+        if "frame" not in data.columns:
+            data["frame"] = get_frame(
+                    data["time"].values,
+                    self._config_file.get_value("fps"))
         return data
 
     def _optional_preprocessing(self, data, meta_data, options=None):
@@ -159,22 +172,12 @@ class DataSet(Integrator):
             for operation, args in zip(ops, value.get("operations_args")):
                 if operation == "moving_average":
                     moving_average(data[[column]], args)
-        if "heading" not in data.columns:
-            data["heading"] = None
-            data["heading"] = data["heading"].astype(float)
-            for track_id in data["trackId"].unique():
-                heading = get_heading(
-                    data[data["trackId"]==track_id]["xCenter"].values,
-                    data[data["trackId"]==track_id]["yCenter"].values)
-                try:
-                    data.loc[data["trackId"]==track_id, "heading"] = heading
-                except ValueError as exc:
-                    _LOGGER.error(exc)
-                    raise exc
-        if "frame" not in data.columns:
-            data["frame"] = get_frame(
-                    data["time"].values,
-                    self._config_file.get_value("fps"))
+        # drop tracks with speed average below 1 km/h
+        valid_tracks = []
+        for track_id, track_chunk in data.groupby(by=["trackId"]):
+            if track_chunk["speed"].mean() > 1:
+                valid_tracks.append(track_id)
+        data = data[data["trackId"].isin(valid_tracks)]
         if "distanceIntersectionCrossing" not in data.columns:
             # calculate intersection crossing time
             pt1, pt2 = \
@@ -225,6 +228,7 @@ class DataSet(Integrator):
                     data_chunk[ordinate].values,
                     lane_data,
                     use_xy=use_xy)
+        
         return data
 
     def _update_metadata(self, data):
