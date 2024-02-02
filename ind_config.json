@@ -1,0 +1,78 @@
+{
+    "data_file_regex": "21_tracks.csv$",
+    "metafile_replace": [".csv", "Meta.csv"],
+    "lanes": [1,2],
+    "skip_corrupt": false,
+    "xy_is_not_center": false,
+    "traffic_light_time": 1,
+    "fps": 25,
+    "df_config": {
+      "recordingId": {
+        "new_name": "recordingId",
+        "is_numeric": true
+      },
+      "trackId": {
+        "new_name": "trackId"
+      },
+      "frame": {
+        "new_name": "frame",
+        "is_numeric": true
+      },
+      "trackLifetime": {
+        "new_name": "trackLifetime",
+        "is_numeric": true
+      },
+      "xCenter": {
+        "new_name": "xCenter",
+        "is_numeric": true
+      },
+      "yCenter": {
+        "new_name": "yCenter",
+        "is_numeric": true
+      },
+      "heading": {
+        "new_name": "heading",
+        "is_numeric": true
+      },
+      "width": {
+        "new_name": "width",
+        "is_numeric": true
+      },
+      "length": {
+        "new_name": "length",
+        "is_numeric": true
+      },
+      "xVelocity": {
+        "new_name": "xVelocity",
+        "is_numeric": true
+      },
+      "yVelocity": {
+        "new_name": "yVelocity",
+        "is_numeric": true
+      },
+      "xAcceleration": {
+        "new_name": "xAcceleration",
+        "is_numeric": true
+      },
+      "yAcceleration": {
+        "new_name": "acc",
+        "is_numeric": true
+      }
+    },
+    "file_specific_options": [
+      {
+        "recordingId": 21,
+        "coordinate_system": [
+          "xCenter",
+          "yCenter"
+        ]
+      }
+    ],
+    "intersection_points_xy": [
+      36.0,
+      -29.3,
+      40.5,
+      -35.7
+    ]
+  }
+  
