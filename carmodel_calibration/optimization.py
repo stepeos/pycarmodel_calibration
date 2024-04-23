@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 # from carmodel_calibration.exceptions import OptimizationFailed
-from carmodel_calibration.fileaccess.parameter import EidmParameters
+from carmodel_calibration.fileaccess.parameter import ModelParameters
 from carmodel_calibration.sumo.sumo_project import SumoProject
 
 _LOGGER = logging.getLogger(__name__)
@@ -155,21 +155,21 @@ def _get_results(simulation_results, identification, lane):
         simulation_results[1]["ground_truth"][condition])
     return prediction_result, ground_truth_result
 
-def _run_sumo(identification, sumo_interface, param_sets, project_path):
-    eidms = []
+def _run_sumo(identification, sumo_interface, param_sets, project_path, model):
+    cfmodels = []
     route_count = SumoProject.get_number_routes(
         project_path / "calibration_routes.rou.xml")
     if route_count != len(param_sets):
         sumo_interface.release()
-        SumoProject.create_sumo(project_path, len(param_sets))
+        SumoProject.create_sumo(project_path, model, len(param_sets))
         sumo_interface.start_simulation_module()
     for idx, param_set in enumerate(param_sets):
-        eidm = EidmParameters.create_eidm_parameter_set(f"set{idx}.json",
+        cfmodel = ModelParameters.create_parameter_set(f"set{idx}.json", model,
                                                         **param_set)
-        eidms.append(eidm)
+        cfmodels.append(cfmodel)
     SumoProject.write_followers_leader(
         project_path / "calibration_routes.rou.xml",
-        eidms)
+        cfmodels)
     simulation_results = sumo_interface.run_simulation(
         identification=identification)
     return simulation_results
@@ -186,6 +186,7 @@ def _vectorized_target(params, *data):
     params = np.atleast_2d(params).T
     data = data[0]
     identification = data["identification"]
+    model = data["cfmodel"]
     sumo_interface = data["sumo_interface"]
     objective_function = data["objective_function"]
     project_path = data["project_path"]
@@ -200,13 +201,17 @@ def _vectorized_target(params, *data):
             {key: value for key, value in zip(param_names, solution)})
         param_sets.append(params_dict)
     simulation_results = _run_sumo(
-        identification, sumo_interface, param_sets, project_path)
-    with Pool(os.cpu_count()) as pool:
+        identification, sumo_interface, param_sets, project_path, model)
+    with Pool(os.cpu_count()//2) as pool:
         results = []
         for idx in range(len(params)):
             results.append((idx, simulation_results, identification,
                             objective_function))
         performance = list(pool.starmap(_calculate_performance, results))
+    #performance = []
+    #for idx in range(len(params)):
+    #    performance.append(_calculate_performance(idx, simulation_results, identification,
+    #                    objective_function))
     return performance
 
 
@@ -214,6 +219,8 @@ def target_factory(data, invert_error=False):
     """factory for creating a target callback"""
     def _vectorized_wrapper(params, solution_indexes):
         solutions = _vectorized_target(params.T, data)
+        if solution_indexes is None:
+            return None
         if invert_error:
             return [1 / solution for solution in solutions]
         else:

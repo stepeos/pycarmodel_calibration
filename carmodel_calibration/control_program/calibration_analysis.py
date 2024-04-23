@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from carmodel_calibration.fileaccess.parameter import EidmParameters
+from carmodel_calibration.fileaccess.parameter import ModelParameters
 from carmodel_calibration.optimization import (_get_results, factory_wrapper)
 from carmodel_calibration.sumo.simulation_module import SumoInterface
 from carmodel_calibration.sumo.sumo_project import SumoProject
@@ -19,7 +19,7 @@ from carmodel_calibration.sumo.sumo_project import SumoProject
 def _get_param_set(results_chunk: pd.DataFrame, iteration: int) -> dict:
     param_set = results_chunk[
         results_chunk["iteration"]==iteration].iloc[0].to_dict()
-    keys = list(EidmParameters.get_defaults_dict().keys())
+    keys = list(ModelParameters.get_defaults_dict().keys())
     return {key: param_set[key] for key in keys}
 
 def _get_unique_calibrations(results: pd.DataFrame):
@@ -48,25 +48,25 @@ def _get_unique_calibrations(results: pd.DataFrame):
         yield identification, chunk
 
 def _simulate_single(identification, results_chunk, sumo_interface,
-                    project_path):
+                    project_path, model):
     param_sets = {}
     for iteration in results_chunk["iteration"].unique():
         param_sets.update({iteration: _get_param_set(results_chunk, iteration)})
     simulation_results = _run_sumo(identification, sumo_interface, param_sets,
-                                  project_path)
+                                  project_path, model)
     return simulation_results
 
-def _run_sumo(identification, sumo_interface, param_sets, project_path):
-    # SumoProject.create_sumo(project_path, eidm0,  len(param_sets))
-    eidms = []
+def _run_sumo(identification, sumo_interface, param_sets, project_path, model):
+    # SumoProject.create_sumo(project_path, model,  len(param_sets))
+    cfmodels = []
     for idx in range(len(param_sets)):
         param_set = param_sets[idx+1]
-        eidm = EidmParameters.create_eidm_parameter_set(f"set{idx}.json",
+        cfmodel = ModelParameters.create_parameter_set(f"set{idx}.json", model,
                                                         **param_set)
-        eidms.append(eidm)
+        cfmodels.append(cfmodel)
     SumoProject.write_followers_leader(
         project_path / "calibration_routes.rou.xml",
-        eidms)
+        cfmodels)
     # identification = (identification[0], float(identification[1]), identification[2])
     simulation_results = sumo_interface.run_simulation(
         identification=identification)
@@ -206,7 +206,7 @@ def _plot_single(identification, results_chunk, simulation_result,
     plt.close()
     return fig1, fig2
 
-def create_calibration_analysis(outputpath, data_directory):
+def create_calibration_analysis(outputpath, data_directory, model, remote_port):
     """creates calibration analysis pdfs from calibration results"""
     rc_file = Path(__file__).parents[1] / "data_config/matplotlib.rc"
     plt.style.use(rc_file)
@@ -226,10 +226,10 @@ def create_calibration_analysis(outputpath, data_directory):
             if not project_path.exists():
                 project_path.mkdir(parents=True)
             num_param_sets = results_chunk.values.shape[0]
-            SumoProject.create_sumo(project_path, num_param_sets)
-            sumo = SumoInterface(project_path, data_directory, gui=False)
+            SumoProject.create_sumo(project_path, model, num_param_sets)
+            sumo = SumoInterface(project_path, data_directory, remote_port, gui=False)
             simulation_result = _simulate_single(
-                identification, results_chunk, sumo, project_path)
+                identification, results_chunk, sumo, project_path, model)
             simulation_results.append(simulation_result)
             sumo.release()
         figures = []

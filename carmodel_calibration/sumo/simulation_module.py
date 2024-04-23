@@ -123,7 +123,7 @@ def _interpolate_jumpy_start(leader_jumpy, follower_jumpy):
 class SumoInterface:
     """class that handles the sumo app"""
 
-    def __init__(self, sumo_project_path: Path, leader_follower_path: Path,
+    def __init__(self, sumo_project_path: Path, leader_follower_path: Path, remote_port: int = randint(8000, 9000),
                  gui=False, file_buffer=None):
         self.args = (sumo_project_path, leader_follower_path)
         self.kwargs = {"gui": gui, "file_buffer": file_buffer}
@@ -182,7 +182,7 @@ class SumoInterface:
                           "looking for \'*_selection.csv\'.")
             raise FileNotFoundError("Leader-Follower data not found.")
         self.network_info = self._get_network_info()
-        self._port = randint(8000, 9000)
+        self._port = remote_port
         self.reload = [f"-c={str(configs[0])}"]
         initial_fcd_file = self.sumo_project_path / "01_trajectories.xml"
         self.cmd = [
@@ -192,6 +192,7 @@ class SumoInterface:
             f"--fcd-output={initial_fcd_file}",
             "--fcd-output.acceleration",
             "--fcd-output.max-leader-distance=1000",
+            "--startup-wait-threshold=-1",
             "--quit-on-end",
             "--seed=2023"
         ]
@@ -261,6 +262,7 @@ class SumoInterface:
         traci.load(self.reload
                        + ["--fcd-output", str(new_trajectories_file),
                           "--fcd-output.acceleration",
+                          "--startup-wait-threshold=-1",
                           "--fcd-output.max-leader-distance=1000"])
         return self._chunk(identification=identification)
 
@@ -363,12 +365,18 @@ class SumoInterface:
             traci.load(self.reload
                        + ["--fcd-output", str(new_trajectories_file),
                           "--fcd-output.acceleration",
+                          "--startup-wait-threshold=-1",
                           "--fcd-output.max-leader-distance=1000"])
             self._read_simulation_prediction(chunk_counter)
         _LOGGER.debug("Finished simulations, gathering simulation results.")
         simulation_results = \
             self._create_simulation_dataframe(chunk_inputs)
-        self._pickle_dump(simulation_results, "simulation_results")
+        try:
+            self._pickle_dump(simulation_results, "simulation_results")
+        except Exception as exc:
+            _LOGGER.error("Failed to dump pickle.")
+            raise exc
+        _LOGGER.debug("Dumped simulation results into pickle.")
         return simulation_results
 
     def _process_chunk(self, selection_data, chunk):

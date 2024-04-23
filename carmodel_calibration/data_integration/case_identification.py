@@ -159,12 +159,14 @@ def euclidian_distance(pos1, pos2):
 
 def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
                    meta_data: pd.DataFrame, use_xy=False, lanes: list = None,
-                   classes : list = ["Car", "Van"], traffic_light_time=60):
+                   classes : list = ["car", "van"], traffic_light_time=60):
     """gets the following cars"""
     classes = [c.lower() for c in classes]
     if not lanes:
         lanes = np.unique(lane_data["trackId"])
     times = np.sort(data["time"].unique())[:2]
+    if traffic_light_time == None:
+        traffic_light_time = 60
     fps = np.rint(1 / (times[1] - times[0])).astype(int)
     track_ids = []
     trajectories = data.copy()
