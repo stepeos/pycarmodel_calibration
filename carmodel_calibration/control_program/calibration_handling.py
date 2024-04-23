@@ -4,6 +4,7 @@ import logging
 import time
 from contextlib import redirect_stdout
 from pathlib import Path
+import traceback
 from random import randint
 
 import numpy as np

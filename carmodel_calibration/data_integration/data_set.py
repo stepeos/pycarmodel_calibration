@@ -46,7 +46,7 @@ class DataSet(Integrator):
                     "trackId": track_id,
                     "length": row["length"],
                     "width": row["width"],
-                    "class": row["class"],
+                    "class": row["class"].lower(),
                     "recordingId": recording_id})
             meta_data = pd.DataFrame(meta_items)
             return meta_data
@@ -126,7 +126,7 @@ class DataSet(Integrator):
             data["class"] = None
             for track_id in data["trackId"].unique():
                 track_class = (
-                    meta_data[meta_data["trackId"]==track_id]["class"].iloc[0])
+                    meta_data[meta_data["trackId"]==track_id]["class"].iloc[0].lower())
                 data.loc[data["trackId"]==track_id, "class"] = \
                     track_class
         if "frame" not in data.columns:

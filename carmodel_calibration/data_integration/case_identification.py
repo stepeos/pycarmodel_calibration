@@ -64,7 +64,7 @@ def car_at_redlight(data: pd.DataFrame, lane_data: pd.DataFrame,
     free_leaders = []
     for time, time_chunk in scoped.groupby(by=["time"]):
         for _, lane_chunk in time_chunk.groupby(by=["lane"]):
-            lane_chunk = lane_chunk[~(lane_chunk["class"]=="Two-Wheeler")]
+            lane_chunk = lane_chunk[~(lane_chunk["class"].str.lower()=="two-wheeler")]
             distance_chunk = lane_chunk.copy()
             distance_chunk["distanceIntersectionCrossing"] = np.abs(
                 distance_chunk["distanceIntersectionCrossing"])
@@ -217,12 +217,12 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
         situation = np.argmin(redlight_peaks - row["time"])
         situations.append(situation)
     pairs.reset_index(inplace=True)
-    pairs["siutation"] = situations
+    pairs["situation"] = situations
     pairs = pairs.rename(columns={"trackId": "leader"})
     if len(pairs) == 0:
         return []
-    pairs = pairs[pairs["class"].isin(classes)
-                  & pairs["classFollower"].isin(classes)]
+    pairs = pairs[pairs["class"].str.lower().isin(classes)
+                  & pairs["classFollower"].str.lower().isin(classes)]
     drop_reasons = {
         "intersection_crossing_zero": [],
         "not_going_straight_leader": [],
@@ -311,8 +311,8 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
         min_gap = euclidian_distance(pos_leader_ss, pos_follower_ss)
         min_gap -= leader_meta["length"]
         # min_gap -= (leader_meta["length"] + follower_meta["length"]) / 2
-        if not(leader_meta["class"] in classes
-               and follower_meta["class"] in classes):
+        if not(leader_meta["class"].lower() in classes
+               and follower_meta["class"].lower() in classes):
             drop_pairs.append(leader)
             continue
         if min_gap < 0.1:
