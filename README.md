@@ -58,7 +58,7 @@ carmodel-calibration --action=calibrate "path/to/input/data" "path/to/output-dat
 3. successful, if `carmodel-calibration --help` shows the help
 
 ##  Example Usage:
-For educational purposes, InD dataset can be acquired for free from [https://levelxdata.com/ind-dataset/](levelxdata.com/ind-dataset/). This dataset does not contain any intersection with traffic lights, however with the right configuration file, some calibration targets can still be found.
+For educational purposes, InD dataset can be acquired for free from [levelxdata.com/ind-dataset/](https://levelxdata.com/ind-dataset/). This dataset does not contain any intersection with traffic lights, however with the right configuration file, some calibration targets can still be found.
 1. Download the dataset to `/my/dataset/path/inD-dataset-v1.0/`
 2. create a results directory `mkdir -p /my/dataset/path/inD-dataset-v1.0/results`
 3. download the sample config `wget -O /my/dataset/path/inD-dataset-v1.0/data/data_config.json https://github.com/stepeos/pycarmodel_calibration/main/ind_config.json`

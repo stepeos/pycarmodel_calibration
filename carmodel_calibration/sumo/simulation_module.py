@@ -18,7 +18,7 @@ import pandas as pd
 from carmodel_calibration.data_integration.data_set import DataSet
 from carmodel_calibration.exceptions import (FolderNotFound, MissingConfiguration,
                                          MultipleConfigurations)
-from carmodel_calibration.helpers import _get_starting_time, _get_vehicle_meta_data
+from carmodel_calibration.helpers import _get_starting_time
 from carmodel_calibration.sumo.sumo_project import SumoProject
 
 _LOGGER = logging.getLogger(__name__)
@@ -123,7 +123,8 @@ def _interpolate_jumpy_start(leader_jumpy, follower_jumpy):
 class SumoInterface:
     """class that handles the sumo app"""
 
-    def __init__(self, sumo_project_path: Path, leader_follower_path: Path, remote_port: int = randint(8000, 9000),
+    def __init__(self, sumo_project_path: Path, leader_follower_path: Path,
+                 remote_port: int = randint(8000, 9000),
                  gui=False, file_buffer=None):
         self.args = (sumo_project_path, leader_follower_path)
         self.kwargs = {"gui": gui, "file_buffer": file_buffer}

@@ -210,7 +210,7 @@ class SumoProject:
                     break
             follower_item = ET.Element("vType")
             follower_item.set("id", f"follower{idx}")
-            found_desAccel = 0;
+            found_desAccel = 0
             for key, value in follower.items():
                 if key == "speedFactor":
                     continue
@@ -220,7 +220,7 @@ class SumoProject:
                       key == "desAccel4" or
                       key == "desAccel5" or
                       key == "desAccel6"):
-                    found_desAccel = 1;
+                    found_desAccel = 1
                     continue
                 follower_item.set(key, str(value))
             if found_desAccel == 1:
@@ -236,12 +236,13 @@ class SumoProject:
                 speed5 = 32 #40
                 desAccel6 = follower.get_value("desAccel6")
                 speed6 = 45 #50
-                follower_item.set("desAccelProfile", str(speed1) + " " + str(desAccel1) + "," +
-                                   str(speed2) + " " + str(desAccel2) + "," +
-                                   str(speed3) + " " + str(desAccel3) + "," +
-                                   str(speed4) + " " + str(desAccel4) + "," +
-                                   str(speed5) + " " + str(desAccel5) + "," +
-                                   str(speed6) + " " + str(desAccel6))
+                follower_item.set("desAccelProfile", str(speed1) + " "
+                                   + str(desAccel1) + ","
+                                   + str(speed2) + " " + str(desAccel2) + ","
+                                   + str(speed3) + " " + str(desAccel3) + ","
+                                   + str(speed4) + " " + str(desAccel4) + ","
+                                   + str(speed5) + " " + str(desAccel5) + ","
+                                   + str(speed6) + " " + str(desAccel6))
             routes_root.insert(idx, follower_item)
             max_id = idx
         leader = ET.Element("vType")
