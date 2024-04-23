@@ -210,39 +210,29 @@ class SumoProject:
                     break
             follower_item = ET.Element("vType")
             follower_item.set("id", f"follower{idx}")
-            found_desAccel = 0
+            found_desaccel = False
             for key, value in follower.items():
                 if key == "speedFactor":
                     continue
-                elif (key == "desAccel1" or
-                      key == "desAccel2" or
-                      key == "desAccel3" or
-                      key == "desAccel4" or
-                      key == "desAccel5" or
-                      key == "desAccel6"):
-                    found_desAccel = 1
+                elif re.match(r'desAccel\d', key):
+                    found_desaccel = True
                     continue
                 follower_item.set(key, str(value))
-            if found_desAccel == 1:
-                desAccel1 = follower.get_value("desAccel1")
-                speed1 = 4 #5
-                desAccel2 = follower.get_value("desAccel2")
-                speed2 = 9 #12
-                desAccel3 = follower.get_value("desAccel3")
-                speed3 = 14 #20
-                desAccel4 = follower.get_value("desAccel4")
-                speed4 = 22 #30
-                desAccel5 = follower.get_value("desAccel5")
-                speed5 = 32 #40
-                desAccel6 = follower.get_value("desAccel6")
-                speed6 = 45 #50
-                follower_item.set("desAccelProfile", str(speed1) + " "
-                                   + str(desAccel1) + ","
-                                   + str(speed2) + " " + str(desAccel2) + ","
-                                   + str(speed3) + " " + str(desAccel3) + ","
-                                   + str(speed4) + " " + str(desAccel4) + ","
-                                   + str(speed5) + " " + str(desAccel5) + ","
-                                   + str(speed6) + " " + str(desAccel6))
+            if found_desaccel:
+                desaccel_profile = []
+                desaccel_speeds = {
+                    "desAccel1": 4,  # 5
+                    "desAccel2": 9,  # 12
+                    "desAccel3": 14,  # 20
+                    "desAccel4": 22,  # 30
+                    "desAccel5": 32,  # 40
+                    "desAccel6": 45,  # 50
+                }
+                for desaccel, speed in desaccel_speeds.items():
+                    des_accel_value = follower.get_value(desaccel)
+                    desaccel_profile.append(f"{speed} {des_accel_value}")
+                follower_item.set("desAccelProfile", ",".join(desaccel_profile))
+
             routes_root.insert(idx, follower_item)
             max_id = idx
         leader = ET.Element("vType")

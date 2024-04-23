@@ -106,7 +106,6 @@ def _interpolate_jumpy_start(leader_jumpy, follower_jumpy):
     indexes = follower_synced.index[start+7:stop-8]
     follower_synced.loc[indexes, "xCenter"] = x_averaged_f
     follower_synced.loc[indexes, "yCenter"] = y_averaged_f
-    
     x_averaged_l = np.convolve(
                 leader_synced["xCenter"].values[start:stop],
                 np.ones(16)/16,
@@ -204,6 +203,22 @@ class SumoInterface:
         self.identification = None
         self.start_simulation_module()
 
+    @staticmethod
+    def get_sumo_version():
+        """returns the sumo version as string or throws an error"""
+        try:
+            result = subprocess.run(['sumo', '--version'],
+                                    stdout=subprocess.PIPE, check=True)
+            version_line = result.stdout.decode('utf-8').split('\n')[1]
+            version = re.search(r'Version (\d+\.\d+\.\d+)', version_line)
+            if version:
+                return version.group(1)
+            _LOGGER.error("Could not find version in %s", version_line)
+            raise ValueError
+        except Exception as exc:
+            _LOGGER.error("Failed to get SUMO version.")
+            raise exc
+
     def release(self):
         """stops the simulation module and releases all files"""
         try:
@@ -218,6 +233,9 @@ class SumoInterface:
         self.proc = subprocess.Popen(
             self.cmd, stdout=self.file_buffer or subprocess.DEVNULL,
             stderr=self.file_buffer or subprocess.DEVNULL)
+        if self.proc.poll() is not None:
+            _LOGGER.error("Failed to start SUMO.")
+            raise RuntimeError
         self._init_traci()
 
     def _init_traci(self):
@@ -232,7 +250,7 @@ class SumoInterface:
         try:
             label = str(self.sumo_project_path)
             traci.init(self._port, label=label)
-        except exc:
+        except Exception as exc:
             _LOGGER.debug("Traci init failed with message %s"
                           ", trying to continue...", str(exc))
 

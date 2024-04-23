@@ -116,7 +116,6 @@ def _get_parser(args_to_parse):
             "direct", help="direct optimization")
         model_help = "Model under test, e.g. `eidm`."
         param_keys = ("speedFactor,minGap,accel,"
-            "desAccel1,desAccel2,desAccel3,desAccel4,desAccel5,desAccel6,"
             "decel,startupDelay,tau,delta,"
             "treaction,taccmax,Mflatness,Mbegin")
         param_help = ("comma separated list of parameters e.g. "
@@ -390,5 +389,5 @@ def _kwargs_prompt():
         return None
     return kwargs
 if __name__ == "__main__":
-    __spec__ = None
+    # __spec__ = None # May be uncommented for development
     main()

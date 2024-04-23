@@ -73,8 +73,7 @@ class CalibrationHandler(SimulationHandler):
         self.parameters = []
         self.population_size = max(5, population_size)
         self.param_keys = param_keys or [
-            "minGap", "accel", "desAccel1", "desAccel2", "desAccel3", "desAccel4", 
-            "desAccel5", "desAccel6", "decel", "tau", "delta", "tpreview",
+            "minGap", "accel", "decel", "tau", "delta", "tpreview",
             "tPersDrive", "tPersEstimate", "treaction", "ccoolness",
             "sigmaleader", "sigmagap", "sigmaerror", "jerkmax",
             "epsilonacc", "actionStepLength", "taccmax", "Mflatness", "Mbegin"]

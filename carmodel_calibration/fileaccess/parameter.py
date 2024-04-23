@@ -1,11 +1,36 @@
 """module to handle config files like parameter file"""
 
+import subprocess
+import re
+import logging
+
+
 from enum import Enum
 import numpy as np
 from scipy.optimize import LinearConstraint
 
 from carmodel_calibration.fileaccess.configs import JSON
+from carmodel_calibration.logging_config import configure_logging
 
+configure_logging()
+_LOGGER = logging.getLogger(__name__)
+ITERATION = 1
+START_TIME = None
+
+def _get_sumo_version():
+    """dirty fix to allow sumo dev version"""
+    try:
+        result = subprocess.run(['sumo', '--version'],
+                                stdout=subprocess.PIPE, check=True)
+        version_line = result.stdout.decode('utf-8').split('\n')[0]
+        version = re.search(r'Version (\d+\.\d+\.\d+)', version_line)
+        if version:
+            return version.group(1)
+        _LOGGER.error("Could not find version in %s", version_line)
+        raise ValueError
+    except Exception as exc:
+        _LOGGER.error("Failed to get SUMO version.")
+        raise exc
 
 class ModelEnum(Enum):
     """type of parameterset"""
@@ -65,12 +90,6 @@ class Parameters(JSON):
             "speedFactor": speed_factor or 1.0,
             "minGap": min_gap or 0.5,
             "accel": 2.60, # 10.00
-            "desAccel1": 3.5, # 4m/s | 3.0, # 5m/s
-            "desAccel2": 2.6, # 9m/s | 2.5, # 12m/s
-            "desAccel3": 1.6, # 14m/s | 1.5, # 20m/s
-            "desAccel4": 1.1, # 22m/s | 0.9, # 30m/s
-            "desAccel5": 0.8, # 32m/s | 0.6, # 40m/s
-            "desAccel6": 0.5, # 45m/s | 0.4, # 50m/s
             "decel": 2.5, # 2.5 may be better, was previously 4.5
             "emergencyDecel": 15,
             "startupDelay": startup_delay or 0.0,
@@ -92,6 +111,16 @@ class Parameters(JSON):
             "Mflatness": m_flat or 2,
             "Mbegin": m_beg or 0.7
         }
+        version = _get_sumo_version()
+        if version.split(".")[0] == "1" and int(version.split(".")[1]) > 19:
+           params.update({
+            "desAccel1": 3.5, # 4m/s | 3.0, # 5m/s
+            "desAccel2": 2.6, # 9m/s | 2.5, # 12m/s
+            "desAccel3": 1.6, # 14m/s | 1.5, # 20m/s
+            "desAccel4": 1.1, # 22m/s | 0.9, # 30m/s
+            "desAccel5": 0.8, # 32m/s | 0.6, # 40m/s
+            "desAccel6": 0.5})# 45m/s | 0.4, # 50m/s
+
         for key, value in params.items():
             bounds = Parameters.get_bounds_from_keys([key], 0.04)
             if len(bounds) == 0:
@@ -125,12 +154,6 @@ class Parameters(JSON):
             "speedFactor": [0.8, 1.3],
             "minGap": [0.5, 4],
             "accel": [0.2, 4],
-            "desAccel1": [1.0, 6.0],
-            "desAccel2": [0.6, 5.0],
-            "desAccel3": [0.4, 4.0],
-            "desAccel4": [0.2, 3.0],
-            "desAccel5": [0.1, 2.5],
-            "desAccel6": [0.1, 2.0],
             "decel": [0.5, 5],
             "emergencyDecel": [0.5, 20],
             "startupDelay": [0, 2],
@@ -154,6 +177,16 @@ class Parameters(JSON):
             # "maxvehpreview": [0, ],
             # "vehdynamics": [0, ],
         }
+        # TODO: This is only a temporary fix and needs to be removed
+        version = _get_sumo_version()
+        if version.split(".")[0] == "1" and int(version.split(".")[1]) > 19:
+           param_bounds.update(
+               {"desAccel1": [1.0, 6.0],
+                "desAccel2": [0.6, 5.0],
+                "desAccel3": [0.4, 4.0],
+                "desAccel4": [0.2, 3.0],
+                "desAccel5": [0.1, 2.5],
+                "desAccel6": [0.1, 2.0]})
         bounds = ()
         for key in keys:
             boundary = param_bounds.get(str(key))
@@ -173,7 +206,7 @@ class ModelParameters(Parameters):
         see
         https://sumo.dlr.de/docs/Definition_of_Vehicles%2C_Vehicle_Types%2C_and_Routes.html#car-following_model_parameters
         """
-        
+
         if model == "idm":
             params["carFollowModel"] = "IDM"
             new_set = ModelParameters(filename, ModelEnum.IDM)
@@ -185,18 +218,27 @@ class ModelParameters(Parameters):
             new_set = ModelParameters(filename, ModelEnum.KRAUSS)
         else:
             raise RuntimeError("Model " + model + " not known. Aborting process")
-        
+
         new_set.set_parameters(params)
         return new_set
 
     @staticmethod
     def get_constraints():
         """returns constraints used for optimization"""
-        keys = ["minGap", "accel", "desAccel1", "desAccel2", "desAccel3", "desAccel4",
-                "desAccel5", "desAccel6", "decel", "emergencyDecel", "tau",
-                "delta", "stepping", "tpreview", "tPersDrive",
-                "tPersEstimate", "treaction", "ccoolness", "jerkmax",
-                "epsilonacc", "actionStepLength", "taccmax", "Mflatness", "Mbegin"]
+        version = _get_sumo_version()
+        if version.split(".")[0] == "1" and int(version.split(".")[1]) > 19:
+            keys = ["minGap", "accel", "desAccel1", "desAccel2", "desAccel3",
+                    "desAccel4", "desAccel5", "desAccel6", "decel", "emergencyDecel",
+                    "tau", "delta", "stepping", "tpreview", "tPersDrive",
+                    "tPersEstimate", "treaction", "ccoolness", "jerkmax",
+                    "epsilonacc", "actionStepLength", "taccmax", "Mflatness",
+                    "Mbegin"]
+        else:
+            keys = ["minGap", "accel", "decel", "emergencyDecel", "tau",
+                    "delta", "stepping", "tpreview", "tPersDrive",
+                    "tPersEstimate", "treaction", "ccoolness", "jerkmax",
+                    "epsilonacc", "actionStepLength", "taccmax", "Mflatness",
+                    "Mbegin"]
 
         arr = np.zeros(len(Parameters.get_bounds_from_keys(keys, 0.04)))
         arr[2] = 1
