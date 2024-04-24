@@ -1,6 +1,7 @@
 {
     "xy_is_not_center": true,
     "lanes": [1, 2],
+    "traffic_light_time": -1,
     "df_config": {
         "ID": {
             "new_name": "trackId",
