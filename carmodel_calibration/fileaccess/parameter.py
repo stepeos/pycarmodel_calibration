@@ -151,19 +151,19 @@ class Parameters(JSON):
         """returns Bounds for a list of keys"""
         assert step_size < 1
         param_bounds = {
-            "speedFactor": [0.8, 1.3],
-            "minGap": [0.5, 4],
-            "accel": [0.2, 4],
+            "speedFactor": [0.7, 1.4],
+            "minGap": [0.5, 5],
+            "accel": [0.2, 5],
             "decel": [0.5, 5],
             "emergencyDecel": [0.5, 20],
             "startupDelay": [0, 2],
-            "tau": [0.5, 1.5], # max 2.5 may be better
-            "delta": [1,5], # max 6 may be better
+            "tau": [0.5, 2.5],
+            "delta": [1,6],
             "stepping": [0.0001, 1],
             "tpreview": [1, 10],
             "tPersDrive": [1, 6],
             "tPersEstimate": [1, 20],
-            "treaction": [0.2, 0.9],
+            "treaction": [0.2, 1.2],
             "ccoolness": [0, 1],
             "sigmaleader": [0, 1],
             "sigmagap": [0, 1],
