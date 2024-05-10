@@ -33,6 +33,7 @@ class SensitivityAnalysisHandler(SimulationHandler):
                  num_samples: int = 1000,
                  model: str = "eidm",
                  remote_port: int = randint(8000, 9000),
+                 timestep: float = 0.04,
                  gof: str = "rmse",
                  mop: list = ["distance"],
                  method: str = "sobol",
@@ -67,7 +68,7 @@ class SensitivityAnalysisHandler(SimulationHandler):
             param_keys = list(Parameters.get_defaults_dict().keys())
         keys = []
         for key in param_keys:
-            if Parameters.get_bounds_from_keys([key], 0.04):
+            if Parameters.get_bounds_from_keys([key]):
                 keys.append(key)
         param_keys = keys
         super().__init__(directory=directory,
@@ -87,6 +88,7 @@ class SensitivityAnalysisHandler(SimulationHandler):
         self.objectives = mop
         self.gof = gof
         self.model = model
+        self.timestep = timestep
         self._port = remote_port
         self.weights = weights
         self.method = method.lower()
@@ -139,9 +141,9 @@ class SensitivityAnalysisHandler(SimulationHandler):
         cfmodel = ModelParameters.get_defaults_dict()
         self.default_params = cfmodel
         if self.sumo_interface is None:
-            SumoProject.create_sumo(self.project_path, self.model, parallel_vehicles)
+            SumoProject.create_sumo(self.project_path, self.model, parallel_vehicles, self.timestep)
             sumo_interface = SumoInterface(self.project_path, self._input_data,
-                                        remote_port=self._port, gui=False, file_buffer=self.sumo_pipe)
+                                        remote_port=self._port, gui=False, file_buffer=self.sumo_pipe, timestep=self.timestep)
             self.sumo_interface = sumo_interface
         proxy_objects = {
                 "sumo_interface": self.sumo_interface,
@@ -166,7 +168,7 @@ class SensitivityAnalysisHandler(SimulationHandler):
             "num_vars": len(self.param_keys),
             "names": self.param_keys,
             "groups": None,
-            "bounds": Parameters.get_bounds_from_keys(self.param_keys, 0.04),
+            "bounds": Parameters.get_bounds_from_keys(self.param_keys),
             "outputs": ["weighted_error"]
         }
 

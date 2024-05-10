@@ -206,7 +206,7 @@ def _plot_single(identification, results_chunk, simulation_result,
     plt.close()
     return fig1, fig2
 
-def create_calibration_analysis(outputpath, data_directory, model, remote_port):
+def create_calibration_analysis(outputpath, data_directory, model, remote_port, tstep):
     """creates calibration analysis pdfs from calibration results"""
     rc_file = Path(__file__).parents[1] / "data_config/matplotlib.rc"
     plt.style.use(rc_file)
@@ -226,8 +226,8 @@ def create_calibration_analysis(outputpath, data_directory, model, remote_port):
             if not project_path.exists():
                 project_path.mkdir(parents=True)
             num_param_sets = results_chunk.values.shape[0]
-            SumoProject.create_sumo(project_path, model, num_param_sets)
-            sumo = SumoInterface(project_path, data_directory, remote_port, gui=False)
+            SumoProject.create_sumo(project_path, model, num_param_sets, tstep)
+            sumo = SumoInterface(project_path, data_directory, remote_port, gui=False, timestep=tstep)
             simulation_result = _simulate_single(
                 identification, results_chunk, sumo, project_path, model)
             simulation_results.append(simulation_result)

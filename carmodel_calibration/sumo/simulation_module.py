@@ -124,7 +124,7 @@ class SumoInterface:
 
     def __init__(self, sumo_project_path: Path, leader_follower_path: Path,
                  remote_port: int = randint(8000, 9000),
-                 gui=False, file_buffer=None):
+                 gui=False, file_buffer=None, timestep: float = 0.04):
         self.args = (sumo_project_path, leader_follower_path)
         self.kwargs = {"gui": gui, "file_buffer": file_buffer}
         if not sumo_project_path.exists():
@@ -183,6 +183,7 @@ class SumoInterface:
             raise FileNotFoundError("Leader-Follower data not found.")
         self.network_info = self._get_network_info()
         self._port = remote_port
+        self._timestep = timestep
         self.reload = [f"-c={str(configs[0])}"]
         initial_fcd_file = self.sumo_project_path / "01_trajectories.xml"
         self.cmd = [
@@ -410,7 +411,7 @@ class SumoInterface:
         ground_truths = []
         # calculate the length of steps at the beginning of the simulation to
         # build up reaction time. Cars stand still until t > 0.25s
-        steps_reaction_time = np.rint(.3 // 0.04).astype(int) + 1
+        steps_reaction_time = np.rint(.3 // self._timestep).astype(int) + 1
         for leader, follower, recording_id in zip(chunk["leader"].values,
                                         chunk["follower"].values,
                                         chunk["recordingId"].values):
@@ -469,7 +470,7 @@ class SumoInterface:
                 [leader_synced.iloc[0].to_frame().T] * steps_reaction_time)
             leader_ss["speed"] = 0
             leader_synced = pd.concat((leader_ss, leader_synced))
-            new_time = np.arange(0, len(leader_synced), 1) * 0.04
+            new_time = np.arange(0, len(leader_synced), 1) * self._timestep
             leader_synced.reset_index(drop=True, inplace=True)
             leader_synced["time"] = new_time
             follower_ss = pd.concat(
@@ -493,7 +494,7 @@ class SumoInterface:
                 np.cumsum(delta_distance)
                 + accumulated_distance_f)
             new_speed = np.insert((accumulated_distance_l[1:]
-                               - accumulated_distance_l[:-1]) / 0.04,
+                               - accumulated_distance_l[:-1]) / self._timestep,
                                0, 0, axis=0)
             new_speed_padded = np.pad(new_speed, (5//2, 5-1-5//2), mode="edge")
             new_speed_smooth = np.convolve(new_speed_padded, np.ones((5,))/5,
@@ -514,7 +515,7 @@ class SumoInterface:
                 max_leader_time = leader
             # Create the ground truth dataframe
             ground_truth = pd.DataFrame({
-                "time": new_time-0.04,
+                "time": new_time-self._timestep,
                 "xCenterLeader": leader_synced["xCenter"],
                 "yCenterLeader": leader_synced["yCenter"],
                 "xCenterFollower": follower_synced["xCenter"],
@@ -529,7 +530,7 @@ class SumoInterface:
             ground_truth["follower"] = follower
             ground_truth["recordingId"] = recording_id
             # cars are just inserted at timestep 0 thus exist from timestep + 1
-            ground_truth = ground_truth[ground_truth["time"]!=-0.04]
+            ground_truth = ground_truth[ground_truth["time"]!=-self._timestep]
             ground_truths.append(ground_truth)
             simulation_data[counter] = [leader,
                                         condition,
@@ -586,7 +587,7 @@ class SumoInterface:
                                                     range(len(chunk_results))):
             prediction = pd.read_csv(chunk_result, names=names, header=0,
                                      usecols=use_names)
-            prediction["time"] -= 0.04
+            prediction["time"] -= self._timestep
             prediction = prediction[~prediction["trackId"].isna()].copy()
             prediction["edgeName"] = prediction["counter"].str.replace(
                 "_0", "")
@@ -644,7 +645,7 @@ class SumoInterface:
     def _steps(self, step_data, max_time):
         # move cars by id in a LOOP
         step = 0
-        sim_steps = np.rint(max_time / 0.04) + 1
+        sim_steps = np.rint(max_time / self._timestep) + 1
         while step <= sim_steps:
             try:
                 for edge, (_, leader_exists, _, accumulated_distance,
@@ -689,7 +690,7 @@ class SumoInterface:
         traci.vehicle.add(edge_name+"_leader",
                           f"route_{int(edge):d}",
                           "leader0",
-                          depart=0.04,
+                          depart=self._timestep,
                           departPos=depart_position)
         if color == "red":
             rgba = (255, 0, 0, 255)
