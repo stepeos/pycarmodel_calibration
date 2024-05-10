@@ -123,9 +123,12 @@ class SimulationHandler:
             _LOGGER.info("Read recording #%s.", rec)
             free_leaders = ""
             lanes = self._data_set.get_file_specific_options(rec).get("lanes")
-            for leader in car_at_redlight(data_frame, lane_data, lanes):
-                free_leaders += " " + str(leader)
-                entries.append(("", leader))
+            tlt = self._data_set.get_file_specific_options(rec).get(
+                "traffic_light_time")
+            if tlt > 0:
+                for leader in car_at_redlight(data_frame, lane_data, lanes):
+                    free_leaders += " " + str(leader)
+                    entries.append(("", leader))
             _LOGGER.info("Free leaders %s.", free_leaders)
             coord = self._data_set.get_file_specific_options(rec).get(
                 "coordinate_system")

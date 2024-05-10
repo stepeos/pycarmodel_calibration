@@ -179,8 +179,8 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
             continue
         track_ids.append(track_id)
     trajectories = trajectories[trajectories["trackId"].isin(track_ids)]
-    
-    
+
+
     regarded_times = None
     if traffic_light_time is None or traffic_light_time < 0:
         # TODO: Here we can implement an alternative way to calculate the pairs
@@ -199,15 +199,18 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
         & (trajectories["lane"].isin(lanes))
     )
     stop_frames = np.sort(trajectories[condition]["frame"].unique())
-    stop_frames = np.append(0, stop_frames)
+    stop_frames = [0] + list(stop_frames)
 
     frames_to_investigate = []
     times = np.sort(data["time"].unique())[:2]
     fps = np.rint(1 / (times[1] - times[0])).astype(int)
     ten_secs = 5 * fps
-    for begin, stop in zip(stop_frames[:-1], stop_frames[1:]):
+    for i in range(0, len(stop_frames), 2):
         # capture order every 5 seconds
+        begin = stop_frames[i]
+        stop = stop_frames[i+1]
         frames_to_investigate.extend(list(np.arange(begin, stop, ten_secs)))
+
     if len(frames_to_investigate) == 0:
         frames_to_investigate.append(0)
     condition = trajectories["frame"].isin(frames_to_investigate)
