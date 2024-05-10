@@ -199,7 +199,7 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
         & (trajectories["lane"].isin(lanes))
     )
     stop_frames = np.sort(trajectories[condition]["frame"].unique())
-
+    stop_frames = np.append(0, stop_frames)
 
     frames_to_investigate = []
     times = np.sort(data["time"].unique())[:2]
