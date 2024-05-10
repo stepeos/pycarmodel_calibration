@@ -203,7 +203,7 @@ def _vectorized_target(params, *data):
         param_sets.append(params_dict)
     simulation_results = _run_sumo(
         identification, sumo_interface, param_sets, project_path, model, timestep)
-    with Pool(os.cpu_count()) as pool:
+    with Pool(os.cpu_count()//2) as pool:
         results = []
         for idx in range(len(params)):
             results.append((idx, simulation_results, identification,
