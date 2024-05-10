@@ -124,7 +124,7 @@ class SimulationHandler:
             free_leaders = ""
             lanes = self._data_set.get_file_specific_options(rec).get("lanes")
             tlt = self._data_set.get_file_specific_options(rec).get(
-                "traffic_light_time")
+                "traffic_light_time") or 0
             if tlt > 0:
                 for leader in car_at_redlight(data_frame, lane_data, lanes):
                     free_leaders += " " + str(leader)
