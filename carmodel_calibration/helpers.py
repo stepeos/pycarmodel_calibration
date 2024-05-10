@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import scipy.optimize as op
 from scipy.signal import find_peaks
+from carmodel_calibration.fileaccess.parameter import ModelEnum
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,7 +77,8 @@ def _get_starting_time(pos_car_in):
 
 def _estimate_parameters(identification: tuple,
                               data_chunk: pd.DataFrame,
-                              meta_data: pd.DataFrame):
+                              meta_data: pd.DataFrame,
+                              model):
     leader_chunk = data_chunk[data_chunk["trackId"]==identification[0]]
     follower_chunk = data_chunk[data_chunk["trackId"]==identification[1]]
     # estimate follower parameters
@@ -102,10 +104,18 @@ def _estimate_parameters(identification: tuple,
     len_l, len_f = leader_meta["length"], follower_meta["length"]
     pos_follower_xy = pos_follower[["xCenter", "yCenter"]].values[0]
     pos_leader_xy = pos_leader[["xCenter", "yCenter"]].values[0]
+    # need to subtract 0.2 when using the EIDM, because the EIDM-SUMO-Code uses an additional 0.25m as "safeguard" 
+    if model == "eidm":
+        min_gap_subtract = 0.2
+    else:
+        min_gap_subtract = 0
     min_gap = (np.sqrt(np.sum(np.square(pos_leader_xy-pos_follower_xy)))
-               - (len_l + len_f) / 2) + 0.1
+               - len_l - min_gap_subtract)
     starting_time_f = _get_starting_time(follower_chunk)
-    startup_delay = np.clip((starting_time_f - adjusted_t0 - 0.25),
+    if model == "idm" or model == "krauss":
+        startup_delay = 0.0001
+    else:
+        startup_delay = np.clip((starting_time_f - adjusted_t0 - 0.25),
                             0, 2)
     follower_start = follower_chunk[
         follower_chunk["time"]>=starting_time_f-0.8]

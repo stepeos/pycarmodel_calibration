@@ -31,16 +31,14 @@ carmodel-calibration --action=calibrate "path/to/input/data" "path/to/output-dat
 
 ## Installation
 ### Prerequisites
-1. Follow the SUMO installation instructions: https://sumo.dlr.de/docs/Installing/index.html and remember the installation directory or copy it to clipboard
+1. Follow the SUMO installation instructions: https://sumo.dlr.de/docs/Installing/index.html and remember the installation directory or copy it to clipboard. You may look [here](https://sumo.dlr.de/releases/) for a specific version.
 2. Open a command-prompt, and verify that sumo and netgenerate are in the PATH variable:
    ```
    sumo --version
    netgenerate
    ```
-3. If both commands show their info, then skip to step 4
+3. If both commands show their info, then youre done.
    If not, add /path/to/sumo/bin to your `PATH` environment variable, this is platform specific.
-4. Add `SUMO_HOME` environment variable by adding `SUMO_HOME=path/to/sumo`. This is platform specific.
-
 ### Installation by building from source
 1. Ensure that `python --version` returns `3.8.*`. If not, install anaconda and create a python 3.8.* environment or install python directly without anaconda (not recommended).
    ```
@@ -58,7 +56,7 @@ carmodel-calibration --action=calibrate "path/to/input/data" "path/to/output-dat
 3. successful, if `carmodel-calibration --help` shows the help
 
 ##  Example Usage:
-For educational purposes, InD dataset can be acquired for free from [https://levelxdata.com/ind-dataset/](levelxdata.com/ind-dataset/). This dataset does not contain any intersection with traffic lights, however with the right configuration file, some calibration targets can still be found.
+For educational purposes, InD dataset can be acquired for free from [levelxdata.com/ind-dataset/](https://levelxdata.com/ind-dataset/). This dataset does not contain any intersection with traffic lights, however with the right configuration file, some calibration targets can still be found.
 1. Download the dataset to `/my/dataset/path/inD-dataset-v1.0/`
 2. create a results directory `mkdir -p /my/dataset/path/inD-dataset-v1.0/results`
 3. download the sample config `wget -O /my/dataset/path/inD-dataset-v1.0/data/data_config.json https://github.com/stepeos/pycarmodel_calibration/main/ind_config.json`

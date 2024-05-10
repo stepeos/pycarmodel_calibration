@@ -1,6 +1,7 @@
 """module to handle simulatinos"""
 import logging
 import pickle
+from random import randint
 from multiprocessing import Manager
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
@@ -29,6 +30,7 @@ class SimulationHandler:
                  param_keys: list = None,
                  num_workers: int = 100,
                  model: str = "eidm",
+                 remote_port: int = randint(8000, 9000),
                  project_path: str = None):
         """
         :param directory:           output directory of calibration config and
@@ -51,6 +53,7 @@ class SimulationHandler:
             raise FileNotFoundError("Input directory does not exist.")
         self._prepared = False
         self._model = model
+        self._port = remote_port
         self._data_set = None
         self.selection_data = None
         self.num_workers =num_workers
@@ -120,9 +123,12 @@ class SimulationHandler:
             _LOGGER.info("Read recording #%s.", rec)
             free_leaders = ""
             lanes = self._data_set.get_file_specific_options(rec).get("lanes")
-            for leader in car_at_redlight(data_frame, lane_data, lanes):
-                free_leaders += " " + str(leader)
-                entries.append(("", leader))
+            tlt = self._data_set.get_file_specific_options(rec).get(
+                "traffic_light_time") or 0
+            if tlt > 0:
+                for leader in car_at_redlight(data_frame, lane_data, lanes):
+                    free_leaders += " " + str(leader)
+                    entries.append(("", leader))
             _LOGGER.info("Free leaders %s.", free_leaders)
             coord = self._data_set.get_file_specific_options(rec).get(
                 "coordinate_system")
@@ -142,7 +148,7 @@ class SimulationHandler:
                                         ["lane"].values)).astype(int))
                 meta_datas.append(self._get_meta_data(meta_data, entries, rec))
                 _LOGGER.debug(
-                    "Found leader=%d and follower=%d lane=%d.", leader, foll,
+                    "Found leader=%s and follower=%s lane=%d.", leader, foll,
                     lane)
             _LOGGER.info("Found %d pairs in recording %d.", pairs_count, rec)
             entry_data.extend(self._get_entry_data(data_frame, entries, rec))
@@ -222,13 +228,13 @@ class SimulationHandler:
         self.pool.close()
         self.pool.terminate()
 
-def simulate_params(param_sets, data_path, identification, project_path):
+def simulate_params(self, param_sets, data_path, identification, project_path):
     """simulates on param set and returns ground_truth and prediction"""
     project_path = Path(project_path)
     routes_path = Path(project_path) / "calibration_routes.rou.xml"
-    SumoProject.create_sumo(project_path, len(param_sets))
+    SumoProject.create_sumo(project_path, self.model, len(param_sets))
     SumoProject.write_followers_leader(routes_path, param_sets)
-    sumo = SumoInterface(project_path, data_path, gui=False)
+    sumo = SumoInterface(project_path, data_path, self._port, gui=False)
     results = sumo.run_simulation(identification)[1]
     ground_truth , prediction = results["ground_truth"], results["prediction"]
     gt_chunks = []

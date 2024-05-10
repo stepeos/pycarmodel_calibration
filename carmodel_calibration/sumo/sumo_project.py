@@ -9,7 +9,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 import warnings
 
-from carmodel_calibration.fileaccess.parameter import EidmParameters
+from carmodel_calibration.fileaccess.parameter import ModelParameters
 from carmodel_calibration.logging_config import configure_logging
 
 configure_logging()
@@ -22,14 +22,14 @@ class SumoProject:
     """class used to build sumo project for calibration purposes"""
 
     @staticmethod
-    def create_sumo(project_path: Path, number_network_lanes: int):
+    def create_sumo(project_path: Path, model: str, number_network_lanes: int):
         """
         create entire sumo project folder
         :param number_network_lanes:        count of lanes in the calibration
                                             grid, must be > 3
         """
-        default_params = EidmParameters.get_defaults_dict()
-        eidm = EidmParameters.create_eidm_parameter_set(".tmp/params",
+        default_params = ModelParameters.get_defaults_dict()
+        cfmodel = ModelParameters.create_parameter_set(".tmp/params", model,
                                                         **default_params)
         if not project_path.exists():
             project_path.mkdir(parents=True)
@@ -44,14 +44,14 @@ class SumoProject:
                                                number_network_lanes)
         SumoProject.create_config(network_path, routes_path, config_path)
         SumoProject.write_followers_leader(routes_path,
-                                           [eidm] * number_network_lanes)
+                                           [cfmodel] * number_network_lanes)
 
     @staticmethod
     def create_network(x_number, y_number, file_path):
         """create grid network"""
         cmd = [
             "netgenerate", "--grid",
-            "--default.speed=13.33",
+            "--default.speed=13.8889",
             f"--grid.x-number={x_number:d}",
             f"--grid.y-number={y_number:d}",
             "--grid.y-length=20",
@@ -153,6 +153,8 @@ class SumoProject:
         cmd = [
             "sumo",
             "--step-length=0.04",
+            "--collision.mingap-factor",
+            "0.1",
             "-e",
             "5",
             "--net-file",
@@ -208,10 +210,29 @@ class SumoProject:
                     break
             follower_item = ET.Element("vType")
             follower_item.set("id", f"follower{idx}")
+            found_desaccel = False
             for key, value in follower.items():
                 if key == "speedFactor":
                     continue
+                elif re.match(r'desAccel\d', key):
+                    found_desaccel = True
+                    continue
                 follower_item.set(key, str(value))
+            if found_desaccel:
+                desaccel_profile = []
+                desaccel_speeds = {
+                    "desAccel1": 4,  # 5
+                    "desAccel2": 9,  # 12
+                    "desAccel3": 14,  # 20
+                    "desAccel4": 22,  # 30
+                    "desAccel5": 32,  # 40
+                    "desAccel6": 45,  # 50
+                }
+                for desaccel, speed in desaccel_speeds.items():
+                    des_accel_value = follower.get_value(desaccel)
+                    desaccel_profile.append(f"{speed} {des_accel_value}")
+                follower_item.set("desAccelProfile", ",".join(desaccel_profile))
+
             routes_root.insert(idx, follower_item)
             max_id = idx
         leader = ET.Element("vType")

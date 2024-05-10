@@ -5,6 +5,7 @@ import time
 from contextlib import redirect_stdout
 from pathlib import Path
 import traceback
+from random import randint
 
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ import scipy.optimize as op
 from scipy.stats import truncnorm
 from tqdm import tqdm
 
-from carmodel_calibration.fileaccess.parameter import EidmParameters, Parameters
+from carmodel_calibration.fileaccess.parameter import ModelParameters, Parameters
 from carmodel_calibration.optimization import (target_factory,
                                            _vectorized_target)
 from carmodel_calibration.sumo.simulation_module import SumoInterface
@@ -36,6 +37,7 @@ class CalibrationHandler(SimulationHandler):
     """class to handle the calibration process"""
 
     def __init__(self, directory: str, input_data: str, model: str = "eidm",
+                 remote_port: int = randint(8000, 9000),
                  optimization: str = "differential_evolution",
                  max_iter:int = 100, param_keys: list = None,
                  population_size: int = 100,
@@ -63,7 +65,7 @@ class CalibrationHandler(SimulationHandler):
         :param force_recalculation: forces to recalculate the selection
         """
         super().__init__(directory=directory, input_data=input_data,
-                        param_keys=param_keys, model=model,
+                        param_keys=param_keys,
                         project_path=project_path)
         self.force_recalculation = force_recalculation
         self._optimization = optimization
@@ -74,7 +76,7 @@ class CalibrationHandler(SimulationHandler):
             "minGap", "accel", "decel", "tau", "delta", "tpreview",
             "tPersDrive", "tPersEstimate", "treaction", "ccoolness",
             "sigmaleader", "sigmagap", "sigmaerror", "jerkmax",
-            "epsilonacc", "taccmax", "Mflatness", "Mbegin"]
+            "epsilonacc", "actionStepLength", "taccmax", "Mflatness", "Mbegin"]
         if project_path:
             self.delete_path = False
             self.project_path = Path(project_path)
@@ -85,6 +87,8 @@ class CalibrationHandler(SimulationHandler):
         self.objectives = mop
         self.weights = None
         self.gof = gof
+        self.model = model
+        self._port = remote_port
         self._lock = None
         self._identification = None
         self.iteration_results = None
@@ -110,7 +114,7 @@ class CalibrationHandler(SimulationHandler):
         """
         result = self.run_calibration()
         if create_reports:
-            create_calibration_analysis(self.directory, self._input_data)
+            create_calibration_analysis(self.directory, self._input_data, self.model, self._port)
         ids = result.groupby(by=["leader", "follower", "recordingId"])
         for ident, chunk in ids:
             last_iteration = np.max(chunk["iteration"].values)
@@ -145,7 +149,7 @@ class CalibrationHandler(SimulationHandler):
         self._prepare_sumo_project()
         self.selection_data.to_csv(self.project_path / "selection.csv")
         bounds = Parameters.get_bounds_from_keys(self.param_keys, 0.04)
-        # cons = EidmParameters.get_constraints()
+        # cons = ModelParameters.get_constraints()
         managed_results = []
         managed_results_out = None
         identifications = (
@@ -160,6 +164,7 @@ class CalibrationHandler(SimulationHandler):
         sumo_interface = SumoInterface(self.project_path,
                                         self._input_data,
                                         file_buffer=sumo_pipe,
+                                        remote_port=self._port,
                                         gui=False)
         results_path = (self.directory
                         / f"calibration_results_{self._optimization}.csv")
@@ -214,7 +219,7 @@ class CalibrationHandler(SimulationHandler):
 
     def _tinker_results(self, identification, result):
         cols = (["iteration", "weightedError", "convergence"]
-            + list(EidmParameters.get_defaults_dict().keys()))
+            + list(ModelParameters.get_defaults_dict().keys()))
         iteration_results = pd.DataFrame(self.iteration_results,
                                                 columns=cols)
         if self._optimization == "direct":
@@ -277,30 +282,37 @@ class CalibrationHandler(SimulationHandler):
             for key in ["minGap", "taccmax", "Mbegin", "Mflatness",
                         "speed_factor", "startupDelay"]:
                 if key in self.param_keys:
-                    bnds = EidmParameters.get_bounds_from_keys([key], 0.04)[0]
+                    bnds = ModelParameters.get_bounds_from_keys([key], 0.04)[0]
                     std = bnds[1] - bnds[0] / 2
                     itera = get_truncated_normal(
                         self.x_0[key], std, bnds[0], bnds[1])
                     self.initial_population[:self.population_size//2,
                                             self.param_keys.index(key)] = (
                         itera.rvs(self.population_size//2))
+            dict_bounds = []
+            for bound_tuple in bounds:
+                dict_bounds.append({'low': bound_tuple[0], 'high': bound_tuple[1]})
             ga_instance = pygad.GA(
                 num_generations=self._max_iter,
-                num_parents_mating=self.initial_population.shape[0]//10,
+                num_parents_mating=self.initial_population.shape[0]//2,
                 initial_population=self.initial_population,
                 sol_per_pop=self.population_size,
                 fitness_func=target_factory(self.data, True),
+                parent_selection_type="sss",
                 suppress_warnings=True,
-                mutation_by_replacement=True,
+                mutation_by_replacement=False,
                 # mutation_num_genes=np.clip(6, len(self.param_keys)),
+                crossover_type="uniform",
                 crossover_probability=0.4,
-                keep_elitism=0,
-                gene_space=np.array(bounds),
-                keep_parents=self.initial_population.shape[1]//5,
+                keep_elitism=self.initial_population.shape[0]//4,
+                gene_space=dict_bounds,
+                #keep_parents=self.initial_population.shape[0]//2-1,
                 fitness_batch_size=self.population_size,
                 random_seed=self.seed,
+                random_mutation_min_val=-1.0,
+                random_mutation_max_val=1.0,
                 mutation_type="random",
-                # mutation_probability=[0.33, 0.15], # for adaptive
+                #mutation_probability=[0.33, 0.10], # for adaptive
                 mutation_probability=0.33,
                 save_best_solutions=True,
                 on_fitness=fitness_callback_factory(self))
@@ -322,17 +334,18 @@ class CalibrationHandler(SimulationHandler):
     def _prepare_optimization(self, sumo_interface, identification):
         data_chunk = self._data_set.get_data_chunk(identification)
         args = _estimate_parameters(identification, data_chunk,
-                                    self.meta_data)
-        x_0 = EidmParameters.get_defaults_dict(*args)
+                                    self.meta_data, self.model)
+        x_0 = ModelParameters.get_defaults_dict(*args)
         self.x_0 = x_0
         for key in self.param_keys:
             if key not in x_0:
                 raise ValueError(
-                    f"Unknown key {key} give nas parma-keys option")
+                    f"Unknown key {key} give nas param-keys option")
         x_optimizing = np.array([self.x_0[key] for key in self.param_keys])
         self.sumo_interface = sumo_interface
         proxy_objects = {
                 "sumo_interface": sumo_interface,
+                "cfmodel": self.model,
                 "project_path": self.project_path
         }
         objective_function = {
@@ -394,7 +407,7 @@ class CalibrationHandler(SimulationHandler):
         project_path = self.project_path
         if not project_path.exists():
             project_path.mkdir()
-        SumoProject.create_sumo(project_path, self.population_size)
+        SumoProject.create_sumo(project_path, self.model, self.population_size)
 
 
 def random_population_from_bounds(bounds: tuple, population_size: int,

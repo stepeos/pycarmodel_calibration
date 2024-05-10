@@ -64,7 +64,7 @@ def car_at_redlight(data: pd.DataFrame, lane_data: pd.DataFrame,
     free_leaders = []
     for time, time_chunk in scoped.groupby(by=["time"]):
         for _, lane_chunk in time_chunk.groupby(by=["lane"]):
-            lane_chunk = lane_chunk[~(lane_chunk["class"]=="Two-Wheeler")]
+            lane_chunk = lane_chunk[~(lane_chunk["class"].str.lower()=="two-wheeler")]
             distance_chunk = lane_chunk.copy()
             distance_chunk["distanceIntersectionCrossing"] = np.abs(
                 distance_chunk["distanceIntersectionCrossing"])
@@ -159,13 +159,16 @@ def euclidian_distance(pos1, pos2):
 
 def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
                    meta_data: pd.DataFrame, use_xy=False, lanes: list = None,
-                   classes : list = ["Car", "Van"], traffic_light_time=60):
-    """gets the following cars"""
+                   classes : list = ["car", "van"], traffic_light_time=60):
+    """
+    function that calculates the leader-follower pairs by their common features
+    and the time that they cross the intersection
+    # TODO: Improve this
+    """
     classes = [c.lower() for c in classes]
     if not lanes:
         lanes = np.unique(lane_data["trackId"])
-    times = np.sort(data["time"].unique())[:2]
-    fps = np.rint(1 / (times[1] - times[0])).astype(int)
+    # Filter all vehilces that are on the desired lanes
     track_ids = []
     trajectories = data.copy()
     for track_id, chunk in data.groupby(by=["trackId"]):
@@ -176,27 +179,46 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
             continue
         track_ids.append(track_id)
     trajectories = trajectories[trajectories["trackId"].isin(track_ids)]
-    # get times as which most cars stop at the intersection
-    redlight_peaks = intersection_peaks(
-        trajectories, lane_data, lanes, traffic_light_time)
+
+
+    regarded_times = None
+    if traffic_light_time is None or traffic_light_time < 0:
+        # TODO: Here we can implement an alternative way to calculate the pairs
+        # which does not involve the traffic light time.
+        # just sample the time points
+        regarded_times = np.arange(data["time"].values.min(),
+                                   data["time"].values.max(), 1)
+    else:
+        # get times as which most cars stop at the intersection
+        redlight_peaks = intersection_peaks(
+            trajectories, lane_data, lanes, traffic_light_time)
+        regarded_times = redlight_peaks
+
     condition = (
-        (trajectories["time"].isin(redlight_peaks))
+        (trajectories["time"].isin(regarded_times))
         & (trajectories["lane"].isin(lanes))
     )
     stop_frames = np.sort(trajectories[condition]["frame"].unique())
+    stop_frames = [0] + list(stop_frames)
+
     frames_to_investigate = []
-    ten_secs = 10 * fps
-    for begin, stop in zip(stop_frames[:-1], stop_frames[1:]):
-        # capture order every 10 seconds
+    times = np.sort(data["time"].unique())[:2]
+    fps = np.rint(1 / (times[1] - times[0])).astype(int)
+    ten_secs = 5 * fps
+    for i in range(0, len(stop_frames), 2):
+        # capture order every 5 seconds
+        begin = stop_frames[i]
+        stop = stop_frames[i+1]
         frames_to_investigate.extend(list(np.arange(begin, stop, ten_secs)))
+
     if len(frames_to_investigate) == 0:
         frames_to_investigate.append(0)
     condition = trajectories["frame"].isin(frames_to_investigate)
-    redlight_situation = trajectories[condition]
+    regarded_situation = trajectories[condition]
     # identifiy pairs of leader follower at stopping positions
     pairs = pd.DataFrame()
     leaders = []
-    for group_name, stopped_chunk in redlight_situation.groupby(by=["frame", "lane"]):
+    for group_name, stopped_chunk in regarded_situation.groupby(by=["frame", "lane"]):
         sequence = stopped_chunk
         sequence["distanceIntersectionCrossing"] = np.abs(
             sequence["distanceIntersectionCrossing"])
@@ -212,15 +234,15 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
         pairs = pd.concat((pairs, sequence))
     situations = []
     for index, row in pairs.iterrows():
-        situation = np.argmin(redlight_peaks - row["time"])
+        situation = np.argmin(regarded_times - row["time"])
         situations.append(situation)
     pairs.reset_index(inplace=True)
-    pairs["siutation"] = situations
+    pairs["situation"] = situations
     pairs = pairs.rename(columns={"trackId": "leader"})
     if len(pairs) == 0:
         return []
-    pairs = pairs[pairs["class"].isin(classes)
-                  & pairs["classFollower"].isin(classes)]
+    pairs = pairs[pairs["class"].str.lower().isin(classes)
+                  & pairs["classFollower"].str.lower().isin(classes)]
     drop_reasons = {
         "intersection_crossing_zero": [],
         "not_going_straight_leader": [],
@@ -298,7 +320,7 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
             drop_pairs.append(leader)
             continue
         distance = (_get_distance_df(leader_synced, follower_synced)
-                - leader_meta["length"])
+                    - leader_meta["length"])
         if any(distance < 0.1):
             drop_pairs.append(leader)
             continue
@@ -309,8 +331,8 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
         min_gap = euclidian_distance(pos_leader_ss, pos_follower_ss)
         min_gap -= leader_meta["length"]
         # min_gap -= (leader_meta["length"] + follower_meta["length"]) / 2
-        if not(leader_meta["class"] in classes
-               and follower_meta["class"] in classes):
+        if not(leader_meta["class"].lower() in classes
+               and follower_meta["class"].lower() in classes):
             drop_pairs.append(leader)
             continue
         if min_gap < 0.1:
@@ -322,8 +344,7 @@ def following_cars(data: pd.DataFrame, lane_data: pd.DataFrame,
 
 def intersection_peaks(trajectories, lane_data, lanes=None,
                        traffic_light_time=60):
-    # find peaks of when cars stop on lanes at the intersection
-    # downscale time
+    """find peaks of when cars stop on lanes at the intersection"""
     if lanes:
         selected_lanes = lanes
     else:

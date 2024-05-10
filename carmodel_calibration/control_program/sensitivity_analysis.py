@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import logging
+from random import randint
 
 from tqdm import tqdm
 import numpy as np
@@ -10,7 +11,7 @@ from SALib import ProblemSpec
 import matplotlib.pyplot as plt
 import matplotlib.backends.backend_pdf
 
-from carmodel_calibration.fileaccess.parameter import EidmParameters, Parameters
+from carmodel_calibration.fileaccess.parameter import ModelParameters, Parameters
 from carmodel_calibration.sumo.simulation_module import SumoInterface
 from carmodel_calibration.sumo.sumo_project import SumoProject
 from carmodel_calibration.control_program.simulation_handler import SimulationHandler
@@ -31,6 +32,7 @@ class SensitivityAnalysisHandler(SimulationHandler):
                  weights: list = None,
                  num_samples: int = 1000,
                  model: str = "eidm",
+                 remote_port: int = randint(8000, 9000),
                  gof: str = "rmse",
                  mop: list = ["distance"],
                  method: str = "sobol",
@@ -70,7 +72,6 @@ class SensitivityAnalysisHandler(SimulationHandler):
         param_keys = keys
         super().__init__(directory=directory,
                          input_data=input_data,
-                         model=model,
                          param_keys=param_keys,
                          num_workers=num_workers,
                          project_path=project_path)
@@ -85,6 +86,8 @@ class SensitivityAnalysisHandler(SimulationHandler):
             self.project_path.mkdir(parents=True)
         self.objectives = mop
         self.gof = gof
+        self.model = model
+        self._port = remote_port
         self.weights = weights
         self.method = method.lower()
         self.num_samples = num_samples
@@ -133,12 +136,12 @@ class SensitivityAnalysisHandler(SimulationHandler):
         self.sumo_pipe = open(
             str(self.project_path / "traci.log"), "w",
             encoding="utf-8")
-        eidm = EidmParameters.get_defaults_dict()
-        self.default_params = eidm
+        cfmodel = ModelParameters.get_defaults_dict()
+        self.default_params = cfmodel
         if self.sumo_interface is None:
-            SumoProject.create_sumo(self.project_path, parallel_vehicles)
+            SumoProject.create_sumo(self.project_path, self.model, parallel_vehicles)
             sumo_interface = SumoInterface(self.project_path, self._input_data,
-                                        gui=False, file_buffer=self.sumo_pipe)
+                                        remote_port=self._port, gui=False, file_buffer=self.sumo_pipe)
             self.sumo_interface = sumo_interface
         proxy_objects = {
                 "sumo_interface": self.sumo_interface,

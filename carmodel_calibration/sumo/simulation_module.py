@@ -18,7 +18,7 @@ import pandas as pd
 from carmodel_calibration.data_integration.data_set import DataSet
 from carmodel_calibration.exceptions import (FolderNotFound, MissingConfiguration,
                                          MultipleConfigurations)
-from carmodel_calibration.helpers import _get_starting_time, _get_vehicle_meta_data
+from carmodel_calibration.helpers import _get_starting_time
 from carmodel_calibration.sumo.sumo_project import SumoProject
 
 _LOGGER = logging.getLogger(__name__)
@@ -106,7 +106,6 @@ def _interpolate_jumpy_start(leader_jumpy, follower_jumpy):
     indexes = follower_synced.index[start+7:stop-8]
     follower_synced.loc[indexes, "xCenter"] = x_averaged_f
     follower_synced.loc[indexes, "yCenter"] = y_averaged_f
-    
     x_averaged_l = np.convolve(
                 leader_synced["xCenter"].values[start:stop],
                 np.ones(16)/16,
@@ -124,6 +123,7 @@ class SumoInterface:
     """class that handles the sumo app"""
 
     def __init__(self, sumo_project_path: Path, leader_follower_path: Path,
+                 remote_port: int = randint(8000, 9000),
                  gui=False, file_buffer=None):
         self.args = (sumo_project_path, leader_follower_path)
         self.kwargs = {"gui": gui, "file_buffer": file_buffer}
@@ -182,7 +182,7 @@ class SumoInterface:
                           "looking for \'*_selection.csv\'.")
             raise FileNotFoundError("Leader-Follower data not found.")
         self.network_info = self._get_network_info()
-        self._port = randint(8000, 9000)
+        self._port = remote_port
         self.reload = [f"-c={str(configs[0])}"]
         initial_fcd_file = self.sumo_project_path / "01_trajectories.xml"
         self.cmd = [
@@ -192,6 +192,7 @@ class SumoInterface:
             f"--fcd-output={initial_fcd_file}",
             "--fcd-output.acceleration",
             "--fcd-output.max-leader-distance=1000",
+            "--startup-wait-threshold=-1",
             "--quit-on-end",
             "--seed=2023"
         ]
@@ -201,6 +202,22 @@ class SumoInterface:
         self.selection_data = None
         self.identification = None
         self.start_simulation_module()
+
+    @staticmethod
+    def get_sumo_version():
+        """returns the sumo version as string or throws an error"""
+        try:
+            result = subprocess.run(['sumo', '--version'],
+                                    stdout=subprocess.PIPE, check=True)
+            version_line = result.stdout.decode('utf-8').split('\n')[1]
+            version = re.search(r'Version (\d+\.\d+\.\d+)', version_line)
+            if version:
+                return version.group(1)
+            _LOGGER.error("Could not find version in %s", version_line)
+            raise ValueError
+        except Exception as exc:
+            _LOGGER.error("Failed to get SUMO version.")
+            raise exc
 
     def release(self):
         """stops the simulation module and releases all files"""
@@ -216,6 +233,9 @@ class SumoInterface:
         self.proc = subprocess.Popen(
             self.cmd, stdout=self.file_buffer or subprocess.DEVNULL,
             stderr=self.file_buffer or subprocess.DEVNULL)
+        if self.proc.poll() is not None:
+            _LOGGER.error("Failed to start SUMO.")
+            raise RuntimeError
         self._init_traci()
 
     def _init_traci(self):
@@ -230,7 +250,7 @@ class SumoInterface:
         try:
             label = str(self.sumo_project_path)
             traci.init(self._port, label=label)
-        except exc:
+        except Exception as exc:
             _LOGGER.debug("Traci init failed with message %s"
                           ", trying to continue...", str(exc))
 
@@ -261,6 +281,7 @@ class SumoInterface:
         traci.load(self.reload
                        + ["--fcd-output", str(new_trajectories_file),
                           "--fcd-output.acceleration",
+                          "--startup-wait-threshold=-1",
                           "--fcd-output.max-leader-distance=1000"])
         return self._chunk(identification=identification)
 
@@ -363,12 +384,18 @@ class SumoInterface:
             traci.load(self.reload
                        + ["--fcd-output", str(new_trajectories_file),
                           "--fcd-output.acceleration",
+                          "--startup-wait-threshold=-1",
                           "--fcd-output.max-leader-distance=1000"])
             self._read_simulation_prediction(chunk_counter)
         _LOGGER.debug("Finished simulations, gathering simulation results.")
         simulation_results = \
             self._create_simulation_dataframe(chunk_inputs)
-        self._pickle_dump(simulation_results, "simulation_results")
+        try:
+            self._pickle_dump(simulation_results, "simulation_results")
+        except Exception as exc:
+            _LOGGER.error("Failed to dump pickle.")
+            raise exc
+        _LOGGER.debug("Dumped simulation results into pickle.")
         return simulation_results
 
     def _process_chunk(self, selection_data, chunk):

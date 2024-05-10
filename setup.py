@@ -31,7 +31,7 @@ setup_dic = dict(
         'cloudpickle==2.2.1'
     ],
     include_package_data=True,
-    python_requires="==3.8.*"
+    python_requires=">=3.8, <3.10"
 )
 if __name__ == "__main__":
     setup(**setup_dic)

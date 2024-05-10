@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 import logging
 import json
+from random import randint
 
 sys.path.append(str(Path(__file__).parents[1]))
 
@@ -44,7 +45,7 @@ def main():
     if args.action == "calibrate":
         _calibrate(args)
     elif args.action == "create_reports":
-        create_calibration_analysis(Path(args.output_dir), Path(args.data_dir))
+        create_calibration_analysis(Path(args.output_dir), Path(args.data_dir), args.model.lower(), args.remote_port)
     elif args.action == "read_matrix":
         _LOGGER.error("Not implemented yet.")
         raise NotImplementedError
@@ -87,6 +88,18 @@ def _get_parser(args_to_parse):
                             metavar="Output-Directory",
                             help="str, Path to where results should be"
                             " stored.")
+    args_to_check = ["--action=create_reports"]
+    remote_port_help = "Remote port for Connection to SUMO, Default: randint(8000, 9000)"
+    parser.add_argument("--remote_port",
+                        type=int,
+                        default=randint(8000, 9000),
+                        help=remote_port_help)
+    if _check_for_args(args_to_parse, args_to_check):
+        model_help = "Model under test, e.g. `eidm`."
+        parser.add_argument("--model",
+                            type=str,
+                            default="eidm",
+                            help=model_help)
     args_to_check = ["--action=calibrate"]
     if _check_for_args(args_to_parse, args_to_check):
         subparsers = parser.add_subparsers(
@@ -101,10 +114,9 @@ def _get_parser(args_to_parse):
             "genetic_algorithm", help="Genetic Algorithm optimization")
         direct_parser = subparsers.add_parser(
             "direct", help="direct optimization")
-        model_help = (
-            "NOT IMPLEMENTED YET,\n"
-            "Models to train as comma separated list e.g. `eidm`.")
-        param_keys = ("speedFactor,minGap,accel,decel,startupDelay,tau,delta,"
+        model_help = "Model under test, e.g. `eidm`."
+        param_keys = ("speedFactor,minGap,accel,"
+            "decel,startupDelay,tau,delta,"
             "treaction,taccmax,Mflatness,Mbegin")
         param_help = ("comma separated list of parameters e.g. "
         "`speedFactor,minGap,...`")
@@ -125,7 +137,7 @@ def _get_parser(args_to_parse):
                                             type=int,
                                             default=1,
                                             help="Number of max iterations.")
-            calibration_parser.add_argument("--models",
+            calibration_parser.add_argument("--model",
                                             type=str,
                                             default="eidm",
                                             help=model_help)
@@ -212,7 +224,6 @@ def _get_parser(args_to_parse):
     return parser
 
 def _calibrate(args):
-    models = args.models.lower().split(",")
     out_path = Path(args.output_dir)
     if not out_path.exists():
         out_path.mkdir(parents=True)
@@ -223,7 +234,7 @@ def _calibrate(args):
         population = 1
     mop = args.mop.replace("\"", "").split(",")
     handler = CalibrationHandler(out_path, args.data_dir,
-                            models, args.calibration_mode,
+                            args.model.lower(), args.remote_port, args.calibration_mode,
                             max_iter=args.max_iter,
                             param_keys=args.param_keys.split(","),
                             population_size=population,
@@ -255,6 +266,7 @@ def _perform_sensitivity_analysis(args):
         weights=None,
         num_samples=args.num_samples,
         model=args.model,
+        remote_port=args.remote_port,
         gof=args.gof,
         mop=mop,
         method=args.sensitivity_method,
@@ -377,4 +389,5 @@ def _kwargs_prompt():
         return None
     return kwargs
 if __name__ == "__main__":
+    # __spec__ = None # May be uncommented for development
     main()
