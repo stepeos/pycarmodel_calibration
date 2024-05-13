@@ -461,8 +461,9 @@ class SumoInterface:
             initial_distance_ss -= len_l
             # initial_distance_ss -= (len_f + len_l) / 2
             initial_distance_ss = max(0.5, initial_distance_ss)
-            leader_synced, follower_synced = _interpolate_jumpy_start(
-                leader_synced, follower_synced)
+            if self._timestep < 0.2:
+                leader_synced, follower_synced = _interpolate_jumpy_start(
+                    leader_synced, follower_synced)
 
             # add 0.5 seconds of standstill to the synced chunks to build
             # up reaction time and adjust the time
