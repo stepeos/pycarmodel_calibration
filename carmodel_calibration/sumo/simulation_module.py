@@ -480,6 +480,10 @@ class SumoInterface:
             follower_synced = pd.concat((follower_ss, follower_synced))
             follower_synced.reset_index(drop=True, inplace=True)
             follower_synced["time"] = new_time
+            follower_speed = np.clip(follower_synced["speed"].values, 0, np.inf)
+            follower_synced["accel"] = np.insert(
+                (follower_speed[1:] - follower_speed[:-1]) / self._timestep,
+                0, 0, axis=0)
 
             #  covered distance per vehicle
             distance = (_get_distance_df(leader_synced, follower_synced)
@@ -500,7 +504,10 @@ class SumoInterface:
             new_speed_padded = np.pad(new_speed, (5//2, 5-1-5//2), mode="edge")
             new_speed_smooth = np.convolve(new_speed_padded, np.ones((5,))/5,
                                            mode="valid")
-            leader_synced["speed"] = np.clip(new_speed_smooth,0, np.inf)
+            leader_synced["speed"] = np.clip(new_speed_smooth, 0, np.inf)
+            leader_synced["accel"] = np.insert(
+                (new_speed_smooth[1:] - new_speed_smooth[:-1]) / self._timestep,
+                0, 0, axis=0)
 
             if leader != "":
                 # distance = (_get_distance_df(leader_synced, follower_synced)
@@ -525,7 +532,9 @@ class SumoInterface:
                 "coveredDistanceFollower": accumulated_distance_f,
                 "distance": distance,
                 "speedLeader": leader_synced["speed"],
-                "speedFollower": follower_synced["speed"]})
+                "speedFollower": follower_synced["speed"],
+                "accelLeader": leader_synced["accel"],
+                "accelFollower": follower_synced["accel"]})
             ground_truth["counter"] = counter
             ground_truth["leader"] = leader
             ground_truth["follower"] = follower
@@ -607,7 +616,7 @@ class SumoInterface:
             condition = prediction["trackId"].str.contains("_leader")
             prediction_followers = (
                 prediction[~condition].sort_values(["time", "counter"])
-                .rename(columns={"acc": "accFollower"}))
+                .rename(columns={"acc": "accelFollower"}))
             prediction_followers = prediction_followers.rename(
                 columns={"speed": "speedFollower"})
             prediction_leaders = (
@@ -618,9 +627,9 @@ class SumoInterface:
                         {"coveredDistanceFollower": "coveredDistanceLeader",
                          "LocalXFollower": "LocalXLeader",
                          "LocalYFollower": "LocalYLeader",
-                         "acc": "accLeader"})
+                         "acc": "accelLeader"})
                 .sort_values(["time", "counter"])
-                [["accLeader", "coveredDistanceLeader"]]
+                [["accelLeader", "coveredDistanceLeader"]]
             )
             prediction_followers[["accLeader", "coveredDistanceLeader"]] =  (
                 prediction_leaders.values)

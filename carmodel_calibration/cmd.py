@@ -168,7 +168,8 @@ def _get_parser(args_to_parse):
                                             type=str,
                                             help="measure of performance, "
                                             "comma separated list, default:"
-                                            "`distance`")
+                                            "`distance`, options are `distance`"
+                                            "`speed`, `accel`")
     args_to_check = ["--action=read_matrix", "--action=create_matrix",
                      "--action=create_data_config"]
     if _check_for_args(args_to_parse, args_to_check):
