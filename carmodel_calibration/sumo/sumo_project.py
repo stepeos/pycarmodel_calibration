@@ -22,7 +22,7 @@ class SumoProject:
     """class used to build sumo project for calibration purposes"""
 
     @staticmethod
-    def create_sumo(project_path: Path, model: str, number_network_lanes: int):
+    def create_sumo(project_path: Path, model: str, number_network_lanes: int, timestep: float = 0.04):
         """
         create entire sumo project folder
         :param number_network_lanes:        count of lanes in the calibration
@@ -41,8 +41,8 @@ class SumoProject:
         SumoProject.create_network(2, max((3, number_network_lanes)),
                                    network_path)
         SumoProject.create_routes_from_network(network_path, routes_path,
-                                               number_network_lanes)
-        SumoProject.create_config(network_path, routes_path, config_path)
+                                               number_network_lanes, timestep)
+        SumoProject.create_config(network_path, routes_path, config_path, timestep)
         SumoProject.write_followers_leader(routes_path,
                                            [cfmodel] * number_network_lanes)
 
@@ -75,7 +75,7 @@ class SumoProject:
 
     @staticmethod
     def create_routes_from_network(network_path: Path, out_path: Path,
-                                   number_used: int = None):
+                                   number_used: int = None, timestep: float = 0.04):
         """creates a routes file from the provided network"""
         pattern = r"^B\d*A\d*$"
         net_tree = ET.parse(str(network_path))
@@ -107,7 +107,7 @@ class SumoProject:
                         trip = ET.SubElement(routes_root, 'trip')
                         trip.set("id", identification)
                         trip.set("type", car_type)
-                        trip.set("depart", "0.04")
+                        trip.set("depart", str(timestep))
                         trip.set("insertionChecks", "none")
                         trip.set("from", source)
                         trip.set("to", dest)
@@ -136,7 +136,7 @@ class SumoProject:
                           method="xml")
 
     @staticmethod
-    def create_config(network_file: Path, routes_file: Path, out_path: Path):
+    def create_config(network_file: Path, routes_file: Path, out_path: Path, timestep: float = 0.04):
         """creates as sumo config file from network and routes file"""
         if not (network_file.exists() and routes_file.exists()):
             if not network_file.exists():
@@ -152,7 +152,7 @@ class SumoProject:
             raise FileNotFoundError
         cmd = [
             "sumo",
-            "--step-length=0.04",
+            f"--step-length={str(timestep)}",
             "--collision.mingap-factor",
             "0.1",
             "-e",

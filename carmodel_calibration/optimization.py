@@ -155,13 +155,13 @@ def _get_results(simulation_results, identification, lane):
         simulation_results[1]["ground_truth"][condition])
     return prediction_result, ground_truth_result
 
-def _run_sumo(identification, sumo_interface, param_sets, project_path, model):
+def _run_sumo(identification, sumo_interface, param_sets, project_path, model, timestep):
     cfmodels = []
     route_count = SumoProject.get_number_routes(
         project_path / "calibration_routes.rou.xml")
     if route_count != len(param_sets):
         sumo_interface.release()
-        SumoProject.create_sumo(project_path, model, len(param_sets))
+        SumoProject.create_sumo(project_path, model, len(param_sets), timestep)
         sumo_interface.start_simulation_module()
     for idx, param_set in enumerate(param_sets):
         cfmodel = ModelParameters.create_parameter_set(f"set{idx}.json", model,
@@ -187,6 +187,7 @@ def _vectorized_target(params, *data):
     data = data[0]
     identification = data["identification"]
     model = data["cfmodel"]
+    timestep = data["timestep"]
     sumo_interface = data["sumo_interface"]
     objective_function = data["objective_function"]
     project_path = data["project_path"]
@@ -201,8 +202,8 @@ def _vectorized_target(params, *data):
             {key: value for key, value in zip(param_names, solution)})
         param_sets.append(params_dict)
     simulation_results = _run_sumo(
-        identification, sumo_interface, param_sets, project_path, model)
-    with Pool(os.cpu_count()) as pool:
+        identification, sumo_interface, param_sets, project_path, model, timestep)
+    with Pool(os.cpu_count()//2) as pool:
         results = []
         for idx in range(len(params)):
             results.append((idx, simulation_results, identification,

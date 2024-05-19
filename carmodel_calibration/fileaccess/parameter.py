@@ -122,7 +122,7 @@ class Parameters(JSON):
             "desAccel6": 0.5})# 45m/s | 0.4, # 50m/s
 
         for key, value in params.items():
-            bounds = Parameters.get_bounds_from_keys([key], 0.04)
+            bounds = Parameters.get_bounds_from_keys([key])
             if len(bounds) == 0:
                 continue
             value = max(value, bounds[0][0])
@@ -147,9 +147,8 @@ class Parameters(JSON):
         return model
 
     @classmethod
-    def get_bounds_from_keys(cls, keys: list, step_size: float):
+    def get_bounds_from_keys(cls, keys: list):
         """returns Bounds for a list of keys"""
-        assert step_size < 1
         param_bounds = {
             "speedFactor": [0.7, 1.4],
             "minGap": [0.5, 5],
@@ -240,7 +239,7 @@ class ModelParameters(Parameters):
                     "epsilonacc", "actionStepLength", "taccmax", "Mflatness",
                     "Mbegin"]
 
-        arr = np.zeros(len(Parameters.get_bounds_from_keys(keys, 0.04)))
+        arr = np.zeros(len(Parameters.get_bounds_from_keys(keys)))
         arr[2] = 1
         arr[3] = -1
         # decel > emergencedecel

@@ -86,9 +86,15 @@ def _estimate_parameters(identification: tuple,
     follower_start = follower_chunk[follower_chunk["time"]>starting_time_f]
     follower_start.reset_index(drop=True, inplace=True)
     follower_time = follower_start["time"].values
-    taccmax_f, m_beg, m_flat = _estimate_acceleration_curve(
-        starting_time_f, follower_start, follower_time)
-    taccmax_f += 0.8 # see EIDM paper by Salles D.
+    if model == "eidm":
+        taccmax_f, m_beg, m_flat = _estimate_acceleration_curve(
+            starting_time_f, follower_start, follower_time)
+    else:
+        taccmax_f = 0.0001
+        m_beg = 0.0001
+        m_flat = 0.0001
+    add_time = 0.0 # used to be 0.8 in EIDM paper by Salles D.
+    taccmax_f += add_time
     # TODO: hardcoded speed limit 50km/h
     speed_factor_follower =  follower_chunk["speed"].max() / 13.8889
     if identification[0] == "":
@@ -118,12 +124,13 @@ def _estimate_parameters(identification: tuple,
         startup_delay = np.clip((starting_time_f - adjusted_t0 - 0.25),
                             0, 2)
     follower_start = follower_chunk[
-        follower_chunk["time"]>=starting_time_f-0.8]
+        follower_chunk["time"]>=starting_time_f-add_time]
     speed_factor_follower =  follower_chunk["speed"].max() / 13.8889
     follower_start.reset_index(drop=True, inplace=True)
     follower_time = follower_start["time"].values
-    taccmax_f, m_beg, m_flat = _estimate_acceleration_curve(
-        starting_time_f, follower_start, follower_time)
+    if model == "eidm":
+        taccmax_f, m_beg, m_flat = _estimate_acceleration_curve(
+            starting_time_f, follower_start, follower_time)
     params = (min_gap, taccmax_f, m_beg, m_flat, speed_factor_follower,
             startup_delay)
     return params

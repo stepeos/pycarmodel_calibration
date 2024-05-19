@@ -45,7 +45,7 @@ def main():
     if args.action == "calibrate":
         _calibrate(args)
     elif args.action == "create_reports":
-        create_calibration_analysis(Path(args.output_dir), Path(args.data_dir), args.model.lower(), args.remote_port)
+        create_calibration_analysis(Path(args.output_dir), Path(args.data_dir), args.model.lower(), args.remote_port, args.timestep)
     elif args.action == "read_matrix":
         _LOGGER.error("Not implemented yet.")
         raise NotImplementedError
@@ -94,6 +94,11 @@ def _get_parser(args_to_parse):
                         type=int,
                         default=randint(8000, 9000),
                         help=remote_port_help)
+    timestep_help = "Time step size of the input data and the SUMO simulation in seconds, Default: 0.04"
+    parser.add_argument("--timestep",
+                        type=float,
+                        default=0.04,
+                        help=timestep_help)
     if _check_for_args(args_to_parse, args_to_check):
         model_help = "Model under test, e.g. `eidm`."
         parser.add_argument("--model",
@@ -234,7 +239,10 @@ def _calibrate(args):
         population = 1
     mop = args.mop.replace("\"", "").split(",")
     handler = CalibrationHandler(out_path, args.data_dir,
-                            args.model.lower(), args.remote_port, args.calibration_mode,
+                            args.model.lower(),
+                            args.remote_port,
+                            args.timestep,
+                            args.calibration_mode,
                             max_iter=args.max_iter,
                             param_keys=args.param_keys.split(","),
                             population_size=population,
@@ -267,6 +275,7 @@ def _perform_sensitivity_analysis(args):
         num_samples=args.num_samples,
         model=args.model,
         remote_port=args.remote_port,
+        timestep=args.timestep,
         gof=args.gof,
         mop=mop,
         method=args.sensitivity_method,

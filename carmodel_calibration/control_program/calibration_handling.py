@@ -38,6 +38,7 @@ class CalibrationHandler(SimulationHandler):
 
     def __init__(self, directory: str, input_data: str, model: str = "eidm",
                  remote_port: int = randint(8000, 9000),
+                 timestep: float = 0.04,
                  optimization: str = "differential_evolution",
                  max_iter:int = 100, param_keys: list = None,
                  population_size: int = 100,
@@ -88,6 +89,7 @@ class CalibrationHandler(SimulationHandler):
         self.weights = None
         self.gof = gof
         self.model = model
+        self.timestep = timestep
         self._port = remote_port
         self._lock = None
         self._identification = None
@@ -114,7 +116,7 @@ class CalibrationHandler(SimulationHandler):
         """
         result = self.run_calibration()
         if create_reports:
-            create_calibration_analysis(self.directory, self._input_data, self.model, self._port)
+            create_calibration_analysis(self.directory, self._input_data, self.model, self._port, self.timestep)
         ids = result.groupby(by=["leader", "follower", "recordingId"])
         for ident, chunk in ids:
             last_iteration = np.max(chunk["iteration"].values)
@@ -148,7 +150,7 @@ class CalibrationHandler(SimulationHandler):
         # pylint: disable=W0603
         self._prepare_sumo_project()
         self.selection_data.to_csv(self.project_path / "selection.csv")
-        bounds = Parameters.get_bounds_from_keys(self.param_keys, 0.04)
+        bounds = Parameters.get_bounds_from_keys(self.param_keys)
         # cons = ModelParameters.get_constraints()
         managed_results = []
         managed_results_out = None
@@ -165,7 +167,8 @@ class CalibrationHandler(SimulationHandler):
                                         self._input_data,
                                         file_buffer=sumo_pipe,
                                         remote_port=self._port,
-                                        gui=False)
+                                        gui=False,
+                                        timestep=self.timestep)
         results_path = (self.directory
                         / f"calibration_results_{self._optimization}.csv")
         try:
@@ -282,7 +285,7 @@ class CalibrationHandler(SimulationHandler):
             for key in ["minGap", "taccmax", "Mbegin", "Mflatness",
                         "speed_factor", "startupDelay"]:
                 if key in self.param_keys:
-                    bnds = ModelParameters.get_bounds_from_keys([key], 0.04)[0]
+                    bnds = ModelParameters.get_bounds_from_keys([key])[0]
                     std = bnds[1] - bnds[0] / 2
                     itera = get_truncated_normal(
                         self.x_0[key], std, bnds[0], bnds[1])
@@ -346,6 +349,7 @@ class CalibrationHandler(SimulationHandler):
         proxy_objects = {
                 "sumo_interface": sumo_interface,
                 "cfmodel": self.model,
+                "timestep": self.timestep,
                 "project_path": self.project_path
         }
         objective_function = {
@@ -407,7 +411,7 @@ class CalibrationHandler(SimulationHandler):
         project_path = self.project_path
         if not project_path.exists():
             project_path.mkdir()
-        SumoProject.create_sumo(project_path, self.model, self.population_size)
+        SumoProject.create_sumo(project_path, self.model, self.population_size, self.timestep)
 
 
 def random_population_from_bounds(bounds: tuple, population_size: int,

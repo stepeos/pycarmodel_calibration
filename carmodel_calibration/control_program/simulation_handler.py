@@ -31,6 +31,7 @@ class SimulationHandler:
                  num_workers: int = 100,
                  model: str = "eidm",
                  remote_port: int = randint(8000, 9000),
+                 timestep: float = 0.04,
                  project_path: str = None):
         """
         :param directory:           output directory of calibration config and
@@ -53,6 +54,7 @@ class SimulationHandler:
             raise FileNotFoundError("Input directory does not exist.")
         self._prepared = False
         self._model = model
+        self._timestep = timestep
         self._port = remote_port
         self._data_set = None
         self.selection_data = None
@@ -232,9 +234,9 @@ def simulate_params(self, param_sets, data_path, identification, project_path):
     """simulates on param set and returns ground_truth and prediction"""
     project_path = Path(project_path)
     routes_path = Path(project_path) / "calibration_routes.rou.xml"
-    SumoProject.create_sumo(project_path, self.model, len(param_sets))
+    SumoProject.create_sumo(project_path, self.model, len(param_sets), self._timestep)
     SumoProject.write_followers_leader(routes_path, param_sets)
-    sumo = SumoInterface(project_path, data_path, self._port, gui=False)
+    sumo = SumoInterface(project_path, data_path, self._port, gui=False, timestep=self._timestep)
     results = sumo.run_simulation(identification)[1]
     ground_truth , prediction = results["ground_truth"], results["prediction"]
     gt_chunks = []
