@@ -23,7 +23,7 @@ def measure_of_performance_factory(objectives=["distance"],
     case2:  leader-follower-pair, mmop: distance and speed
     :param identification:  (leader identification, follower identification,
                             recordingId)
-    :param objectives:      ['distance', 'speed', 'accel'] the
+    :param objectives:      ['distance', 'speed', 'acceleration'] the
                             objectives to calibrate, weighted equally if not
                             specified differently by the `weights` parameter
     :param weights:         `tuple` of len(objectives), each item of type float
@@ -48,10 +48,10 @@ def measure_of_performance_factory(objectives=["distance"],
         raise exc
     weights_renamed = []
     for sop in objectives:
-        if sop not in ["distance", "speed", "accel"]:
+        if sop not in ["distance", "speed", "acceleration"]:
             raise ValueError(f"Objective {sop} not supported.")
-        if sop == "accel":
-            sop = "accelFollower"
+        if sop == "acceleration":
+            sop = "accFollower"
         if sop == "speed":
             sop = "speedFollower"
         weights_renamed.append(sop)
