@@ -72,7 +72,7 @@ def _interpolate_jumpy_start(leader_jumpy, follower_jumpy):
                 follower_synced.iloc[1:], follower_synced.iloc[:-1])
     free_follower = (set(leader_synced["trackId"])
                      == set(follower_synced["trackId"]))
-    columns = ["xCenter", "yCenter", "speed", "lon", "lat", "accel"]
+    columns = ["xCenter", "yCenter", "speed", "lon", "lat", "acc"]
     jumpy_points = []
     if np.any(np.abs(covered_distance_l) > 1):
         jumpy_points.extend(np.where(np.abs(covered_distance_l) > 1)[0])
@@ -481,9 +481,10 @@ class SumoInterface:
             follower_synced.reset_index(drop=True, inplace=True)
             follower_synced["time"] = new_time
             follower_speed = np.clip(follower_synced["speed"].values, 0, np.inf)
-            follower_synced["accel"] = np.insert(
-                (follower_speed[1:] - follower_speed[:-1]) / self._timestep,
-                0, 0, axis=0)
+            if not "acc" in follower_synced:
+                follower_synced["acc"] = np.insert(
+                    (follower_speed[1:] - follower_speed[:-1]) / self._timestep,
+                    0, 0, axis=0)
 
             #  covered distance per vehicle
             distance = (_get_distance_df(leader_synced, follower_synced)
@@ -505,9 +506,10 @@ class SumoInterface:
             new_speed_smooth = np.convolve(new_speed_padded, np.ones((5,))/5,
                                            mode="valid")
             leader_synced["speed"] = np.clip(new_speed_smooth, 0, np.inf)
-            leader_synced["accel"] = np.insert(
-                (new_speed_smooth[1:] - new_speed_smooth[:-1]) / self._timestep,
-                0, 0, axis=0)
+            if not "acc" in leader_synced:
+                leader_synced["acc"] = np.insert(
+                    (new_speed_smooth[1:] - new_speed_smooth[:-1]) / self._timestep,
+                    0, 0, axis=0)
 
             if leader != "":
                 # distance = (_get_distance_df(leader_synced, follower_synced)
@@ -533,8 +535,8 @@ class SumoInterface:
                 "distance": distance,
                 "speedLeader": leader_synced["speed"],
                 "speedFollower": follower_synced["speed"],
-                "accelLeader": leader_synced["accel"],
-                "accelFollower": follower_synced["accel"]})
+                "accLeader": leader_synced["acc"],
+                "accFollower": follower_synced["acc"]})
             ground_truth["counter"] = counter
             ground_truth["leader"] = leader
             ground_truth["follower"] = follower
@@ -616,7 +618,7 @@ class SumoInterface:
             condition = prediction["trackId"].str.contains("_leader")
             prediction_followers = (
                 prediction[~condition].sort_values(["time", "counter"])
-                .rename(columns={"acc": "accelFollower"}))
+                .rename(columns={"acc": "accFollower"}))
             prediction_followers = prediction_followers.rename(
                 columns={"speed": "speedFollower"})
             prediction_leaders = (
@@ -627,9 +629,9 @@ class SumoInterface:
                         {"coveredDistanceFollower": "coveredDistanceLeader",
                          "LocalXFollower": "LocalXLeader",
                          "LocalYFollower": "LocalYLeader",
-                         "acc": "accelLeader"})
+                         "acc": "accLeader"})
                 .sort_values(["time", "counter"])
-                [["accelLeader", "coveredDistanceLeader"]]
+                [["accLeader", "coveredDistanceLeader"]]
             )
             prediction_followers[["accLeader", "coveredDistanceLeader"]] =  (
                 prediction_leaders.values)
