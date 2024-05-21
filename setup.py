@@ -4,10 +4,10 @@ from setuptools import setup, find_packages
 setup_dic = dict(
     name="carmodel_calibration",
     description="a tool for calibration car-following models using sumo",
-    author="Steve Oswald",
+    author="Steve Oswald, Dominik Salles",
     author_email="stevepeter.oswald@gmail.com",
     packages=find_packages(exclude=["scripting", "tests", 'tests.*', ".*"]),
-    version=0.1,
+    version=0.2,
     entry_points={
         'console_scripts': [
             'carmodel-calibration = carmodel_calibration.cmd:main'

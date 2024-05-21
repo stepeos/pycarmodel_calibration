@@ -23,7 +23,7 @@ def measure_of_performance_factory(objectives=["distance"],
     case2:  leader-follower-pair, mmop: distance and speed
     :param identification:  (leader identification, follower identification,
                             recordingId)
-    :param objectives:      ['distance', 'speed', 'speedVariance',...] the
+    :param objectives:      ['distance', 'speed', 'acceleration'] the
                             objectives to calibrate, weighted equally if not
                             specified differently by the `weights` parameter
     :param weights:         `tuple` of len(objectives), each item of type float
@@ -46,10 +46,21 @@ def measure_of_performance_factory(objectives=["distance"],
     except AssertionError as exc:
         _LOGGER.error("Failed creating objective function with given args.")
         raise exc
+    weights_renamed = []
+    for sop in objectives:
+        if sop not in ["distance", "speed", "acceleration"]:
+            raise ValueError(f"Objective {sop} not supported.")
+        if sop == "acceleration":
+            sop = "accFollower"
+        if sop == "speed":
+            sop = "speedFollower"
+        weights_renamed.append(sop)
+    objectives = weights_renamed
     for weights_value, objective in zip(weights_values, objectives):
         weights[objective] = weights_value
     def rmse(ground_truth, prediction):
-        """RMSE(v)
+        """
+        RMSE(v)
         see 'About calibration of car-following dynamics of automated and
         human-driven vehicles: Methodology, guidelines and codes'
         """
@@ -75,7 +86,8 @@ def measure_of_performance_factory(objectives=["distance"],
             sums[idx] = np.sqrt(sums[idx] / len(ground_truth)) * weights[sop]
         return np.sum(sums)
     def theils_u(ground_truth, prediction):
-        """theils U(v)
+        """
+        theils U(v)
         see 'About calibration of car-following dynamics of automated and
         human-driven vehicles: Methodology, guidelines and codes'
         """
