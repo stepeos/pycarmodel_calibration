@@ -71,6 +71,22 @@ def measure_of_performance_factory(objectives=["distance"],
                 - ground_truth[sop].values))
             sums[idx] = np.sqrt(sums[idx] / len(ground_truth)) * weights[sop]
         return np.sum(sums)
+    def nrmse(ground_truth, prediction):
+        """
+        NRMSE(v)
+        see 'About calibration of car-following dynamics of automated and
+        human-driven vehicles: Methodology, guidelines and codes'
+        """
+        sums = np.zeros(len(objectives))
+        for idx, sop in enumerate(objectives):
+            rmse_error = np.sum(np.square(
+                prediction[sop].values
+                - ground_truth[sop].values))
+            rmse_error = np.sqrt(rmse_error / len(ground_truth))
+            gt_root = np.sqrt(np.sum(np.square(ground_truth[sop].values))
+                              / len(ground_truth))
+            sums[idx] = rmse_error / (gt_root) * weights[sop]
+        return sums
     def rmspe(ground_truth, prediction):
         """
         RMSPE(v)
@@ -110,7 +126,7 @@ def measure_of_performance_factory(objectives=["distance"],
         for idx, sop in enumerate(objectives):
             sums[idx] = prediction[sop].values[-1] * weights[sop]
         return np.sum(sums)
-    gof_handles = {"rmse": rmse, "rmsep": rmspe, "modelOutput": model_output,
+    gof_handles = {"rmse": rmse, "nrmse": nrmse, "rmsep": rmspe, "modelOutput": model_output,
                    "theils_u": theils_u}
 
     def get_weighted_error(ground_truth, prediction):
@@ -230,7 +246,19 @@ def _vectorized_target(params, *data):
 
 def target_factory(data, invert_error=False):
     """factory for creating a target callback"""
-    def _vectorized_wrapper(params, solution_indexes):
+    def _vectorized_wrapper(ga_instance, params, solution_indexes):
+        solutions = _vectorized_target(params.T, data)
+        if solution_indexes is None:
+            return None
+        if invert_error:
+            return [1 / solution for solution in solutions]
+        else:
+            return solutions
+    return _vectorized_wrapper
+
+def target_factory_nsga2(data, invert_error=False):
+    """factory for creating a target callback"""
+    def _vectorized_wrapper(ga_instance, params, solution_indexes):
         solutions = _vectorized_target(params.T, data)
         if solution_indexes is None:
             return None

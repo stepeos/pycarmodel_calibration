@@ -99,6 +99,56 @@ def _get_parser(args_to_parse):
                         type=float,
                         default=0.04,
                         help=timestep_help)
+    num_parents_mating_help = "num_parents_mating"
+    parser.add_argument("--num_parents_mating",
+                        type=float,
+                        default=2.,
+                        help=num_parents_mating_help)
+    parent_selection_type_help = "parent_selection_type"
+    parser.add_argument("--parent_selection_type",
+                        type=str,
+                        default="sss",
+                        help=parent_selection_type_help)
+    crossover_type_help = "crossover_type"
+    parser.add_argument("--crossover_type",
+                        type=str,
+                        default="uniform",
+                        help=crossover_type_help)
+    crossover_probability_help = "crossover_probability"
+    parser.add_argument("--crossover_probability",
+                        type=float,
+                        default=0.4,
+                        help=crossover_probability_help)
+    keep_elitism_help = "keep_elitism"
+    parser.add_argument("--keep_elitism",
+                        type=float,
+                        default=4.,
+                        help=keep_elitism_help)
+    mutation_type_help = "mutation_type"
+    parser.add_argument("--mutation_type",
+                        type=str,
+                        default="random",
+                        help=mutation_type_help)
+    mutation_probability_help = "mutation_probability"
+    parser.add_argument("--mutation_probability",
+                        type=float,
+                        default=0.33,
+                        help=mutation_probability_help)
+    strategy_help = "strategy"
+    parser.add_argument("--strategy",
+                        type=str,
+                        default="best1bin",
+                        help=strategy_help)
+    recombination_help = "recombination"
+    parser.add_argument("--recombination",
+                        type=float,
+                        default=0.7,
+                        help=recombination_help)
+    mutation_help = "mutation"
+    parser.add_argument("--mutation",
+                        type=tuple,
+                        default=(0.5,1.0),
+                        help=mutation_help)
     if _check_for_args(args_to_parse, args_to_check):
         model_help = "Model under test, e.g. `eidm`."
         parser.add_argument("--model",
@@ -117,6 +167,8 @@ def _get_parser(args_to_parse):
             help="Differential Evolution optimization")
         ga_parser = subparsers.add_parser(
             "genetic_algorithm", help="Genetic Algorithm optimization")
+        nsga2_parser = subparsers.add_parser(
+            "nsga2", help="Non-dominated Sorting Genetic Algorithm II optimization")
         direct_parser = subparsers.add_parser(
             "direct", help="direct optimization")
         model_help = "Model under test, e.g. `eidm`."
@@ -127,13 +179,13 @@ def _get_parser(args_to_parse):
         "`speedFactor,minGap,...`")
         force_selection_help = ("If the flag is passed, then the selection "
                                 "is forced to be recalculateld.")
-        for calibration_parser in [de_parser, ga_parser]:
+        for calibration_parser in [de_parser, ga_parser, nsga2_parser]:
             calibration_parser.add_argument("--population-size",
                                             type=int,
                                             default=5,
                                             help="Size of the population"
                                             "does not apply to direct.")
-        for calibration_parser in [de_parser, ga_parser, direct_parser]:
+        for calibration_parser in [de_parser, ga_parser, nsga2_parser, direct_parser]:
             calibration_parser.add_argument("--seed",
                                             type=int,
                                             default=None,
@@ -161,7 +213,7 @@ def _get_parser(args_to_parse):
                                             default="rmse",
                                             type=str,
                                             help="goodness-of-fit-function,"
-                                            "one of `rmse`,`rmsep`, `theils_u`"
+                                            "one of `rmse`, `nrmse`, `rmsep`, `theils_u`"
                                             )
             calibration_parser.add_argument("--mop",
                                             default="distance",
@@ -248,6 +300,16 @@ def _calibrate(args):
                             param_keys=args.param_keys.split(","),
                             population_size=population,
                             force_recalculation=args.force_selection,
+                            num_parents_mating=args.num_parents_mating,
+                            parent_selection_type=args.parent_selection_type,
+                            crossover_type=args.crossover_type,
+                            crossover_probability=args.crossover_probability,
+                            keep_elitism=args.keep_elitism,
+                            mutation_type=args.mutation_type,
+                            mutation_probability=args.mutation_probability,
+                            strategy=args.strategy,
+                            recombination=args.recombination,
+                            mutation=args.mutation,
                             gof=args.gof,
                             mop=mop,
                             seed=args.seed)

@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from carmodel_calibration.fileaccess.parameter import ModelParameters, Parameters
 from carmodel_calibration.optimization import (target_factory,
+                                           target_factory_nsga2,
                                            _vectorized_target)
 from carmodel_calibration.sumo.simulation_module import SumoInterface
 from carmodel_calibration.sumo.sumo_project import SumoProject
@@ -46,6 +47,16 @@ class CalibrationHandler(SimulationHandler):
                  gof: str = "rmse",
                  mop: list = ["distance"],
                  seed: int = None,
+                 num_parents_mating: float = 2., # (2=50%) 4=25%, 4/3=75%
+                 parent_selection_type: str = "sss", # "sus", "rank"
+                 crossover_type: str = "uniform", # "single_point"
+                 crossover_probability: float = 0.4, # 0.2, 0.7
+                 keep_elitism: float = 4., # (4=25%) 2=50%, 4/3=75%
+                 mutation_type: str = "random", # "scramble", "adaptive"
+                 mutation_probability: float = 0.33, # 0.1, 0.6, 0.9, for adaptive [0.1, 0.4]
+                 strategy: str = "best1bin", # best2bin, rand1bin
+                 recombination: float = 0.7, # 0.2, 0.5, 0.9
+                 mutation: tuple = (0.5,1.0), # (0.1, 0.6), (1.1, 1.6)
                  force_recalculation: bool = False):
         """
         :param directory:           output directory of calibration config and
@@ -98,6 +109,16 @@ class CalibrationHandler(SimulationHandler):
         self.initial_population = None
         self.x_0 = None
         self.seed = seed
+        self.num_parents_mating = num_parents_mating
+        self.parent_selection_type = parent_selection_type
+        self.crossover_type = crossover_type
+        self.crossover_probability = crossover_probability
+        self.keep_elitism = keep_elitism
+        self.mutation_type = mutation_type
+        self.mutation_probability = mutation_probability
+        self.strategy = strategy
+        self.recombination = recombination
+        self.mutation = mutation
         self.data = None
         self.identification = None
         self.x_optimizing = None
@@ -266,9 +287,9 @@ class CalibrationHandler(SimulationHandler):
                     maxiter=self._max_iter,
                     args=(self.data,),
                     updating="deferred",
-                    recombination=0.7,
-                    mutation=(0.5, 1),
-                    strategy="best1bin",
+                    recombination=self.recombination,
+                    mutation=self.mutation,
+                    strategy=self.strategy,
                     popsize=popsize,
                     disp=True,
                     seed=self.seed,
@@ -297,28 +318,74 @@ class CalibrationHandler(SimulationHandler):
                 dict_bounds.append({'low': bound_tuple[0], 'high': bound_tuple[1]})
             ga_instance = pygad.GA(
                 num_generations=self._max_iter,
-                num_parents_mating=self.initial_population.shape[0]//2,
+                num_parents_mating=int(self.initial_population.shape[0]//self.num_parents_mating),
                 initial_population=self.initial_population,
                 sol_per_pop=self.population_size,
                 fitness_func=target_factory(self.data, True),
-                parent_selection_type="sss",
+                parent_selection_type=self.parent_selection_type,
                 suppress_warnings=True,
                 mutation_by_replacement=False,
                 # mutation_num_genes=np.clip(6, len(self.param_keys)),
-                crossover_type="uniform",
-                crossover_probability=0.4,
-                keep_elitism=self.initial_population.shape[0]//4,
+                crossover_type=self.crossover_type,
+                crossover_probability=self.crossover_probability,
+                keep_elitism=int(self.initial_population.shape[0]//self.keep_elitism),
                 gene_space=dict_bounds,
                 #keep_parents=self.initial_population.shape[0]//2-1,
                 fitness_batch_size=self.population_size,
                 random_seed=self.seed,
                 random_mutation_min_val=-1.0,
                 random_mutation_max_val=1.0,
-                mutation_type="random",
+                mutation_type=self.mutation_type,
                 #mutation_probability=[0.33, 0.10], # for adaptive
-                mutation_probability=0.33,
+                mutation_probability=self.mutation_probability,
                 save_best_solutions=True,
                 on_fitness=fitness_callback_factory(self))
+            ga_instance.run()
+            solution, solution_fitness, _ = (
+                ga_instance.best_solution())
+            result = {"fun": solution_fitness, "x": solution}
+            del ga_instance
+        elif self._optimization == "nsga2":
+            self.initial_population = random_population_from_bounds(
+                bounds, self.population_size)
+            # Set the population genes with estimations
+            for key in ["minGap", "taccmax", "Mbegin", "Mflatness",
+                        "speed_factor", "startupDelay"]:
+                if key in self.param_keys:
+                    bnds = ModelParameters.get_bounds_from_keys([key])[0]
+                    std = bnds[1] - bnds[0] / 2
+                    itera = get_truncated_normal(
+                        self.x_0[key], std, bnds[0], bnds[1])
+                    self.initial_population[:self.population_size//2,
+                                            self.param_keys.index(key)] = (
+                        itera.rvs(self.population_size//2))
+            dict_bounds = []
+            for bound_tuple in bounds:
+                dict_bounds.append({'low': bound_tuple[0], 'high': bound_tuple[1]})
+            ga_instance = pygad.GA(
+                num_generations=self._max_iter,
+                num_parents_mating=int(self.initial_population.shape[0]//self.num_parents_mating),
+                initial_population=self.initial_population,
+                sol_per_pop=self.population_size,
+                fitness_func=target_factory_nsga2(self.data, True),
+                parent_selection_type="nsga2", # "nsga2" or "tournament_nsga2"
+                suppress_warnings=True,
+                mutation_by_replacement=False,
+                # mutation_num_genes=np.clip(6, len(self.param_keys)),
+                crossover_type=self.crossover_type,
+                crossover_probability=self.crossover_probability,
+                keep_elitism=int(self.initial_population.shape[0]//self.keep_elitism),
+                gene_space=dict_bounds,
+                #keep_parents=self.initial_population.shape[0]//2-1,
+                fitness_batch_size=self.population_size,
+                random_seed=self.seed,
+                random_mutation_min_val=-1.0,
+                random_mutation_max_val=1.0,
+                mutation_type=self.mutation_type,
+                #mutation_probability=[0.33, 0.10], # for adaptive
+                mutation_probability=self.mutation_probability,
+                save_best_solutions=True,
+                on_fitness=fitness_callback_factory_nsga2(self))
             ga_instance.run()
             solution, solution_fitness, _ = (
                 ga_instance.best_solution())
@@ -400,7 +467,7 @@ class CalibrationHandler(SimulationHandler):
         _LOGGER.info(tqdm.format_meter(ITERATION, self._max_iter,
                           elapsed=time_taken,
                           prefix=str(self.identification))+
-              f" f(x)={weighted_error:.3f}")
+              f" f(x)={weighted_error:.6f}")
         ITERATION += 1
         # if we return True or when the convergence => 1 , then the polishing
         # step is initialized
@@ -457,3 +524,22 @@ def fitness_callback_factory(item):
         kwargs = {"weighted_error": 1 / best}
         _ = item.log_iteration(best_solution, **kwargs)
     return on_fitness
+
+def fitness_callback_factory_nsga2(item):
+    """a factory for the fitness callback function"""
+
+    def on_fitness(ga_instance: pygad.GA, solutions):
+        """provided callback for fitness"""
+        solution, solution_fitness, _ = (
+                ga_instance.best_solution(ga_instance.last_generation_fitness))
+        best_solution = ga_instance.best_solutions[-1]
+        best = np.sqrt(np.einsum('...i,...i', solution_fitness, solution_fitness))
+        normed_solutions = np.sqrt(np.einsum('...i,...i', solutions, solutions))
+        if best < np.max(normed_solutions):
+            best = np.max(normed_solutions)
+            best_solution = ga_instance.population[
+                np.argmin(normed_solutions).astype(int)]
+        # TODO: log instead of 1 / 0
+        kwargs = {"weighted_error": 1 / best}
+        _ = item.log_iteration(best_solution, **kwargs)
+    return on_fitness    
