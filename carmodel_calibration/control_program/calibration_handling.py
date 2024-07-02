@@ -13,10 +13,16 @@ import pygad
 import scipy.optimize as op
 from scipy.stats import truncnorm
 from tqdm import tqdm
+from pymoo.optimize import minimize
+from pymoode.algorithms import GDE3, NSDE, NSDER
+from pymoode.survival import RankAndCrowding, ConstrRankAndCrowding
+from pymoo.termination.default import DefaultSingleObjectiveTermination, DefaultMultiObjectiveTermination
+from pymoo.core.callback import Callback
 
 from carmodel_calibration.fileaccess.parameter import ModelParameters, Parameters
 from carmodel_calibration.optimization import (target_factory,
                                            target_factory_nsga2,
+                                           target_factory_mo_de,
                                            _vectorized_target)
 from carmodel_calibration.sumo.simulation_module import SumoInterface
 from carmodel_calibration.sumo.sumo_project import SumoProject
@@ -105,6 +111,7 @@ class CalibrationHandler(SimulationHandler):
         self._lock = None
         self._identification = None
         self.iteration_results = None
+        self.all_iteration_results = None
         self.buf = None
         self.initial_population = None
         self.x_0 = None
@@ -175,6 +182,8 @@ class CalibrationHandler(SimulationHandler):
         # cons = ModelParameters.get_constraints()
         managed_results = []
         managed_results_out = None
+        all_managed_results = []
+        all_managed_results_out = None
         identifications = (
             self.selection_data[["leader", "follower", "recordingId"]])
         # identifications = identifications[identifications["leader"]==""]
@@ -192,8 +201,11 @@ class CalibrationHandler(SimulationHandler):
                                         timestep=self.timestep)
         results_path = (self.directory
                         / f"calibration_results_{self._optimization}.csv")
+        all_results_path = (self.directory
+                            / f"calibration_all_results_{self._optimization}.csv")
         try:
             results_path.unlink()
+            all_results_path.unlink()
         except FileNotFoundError:
             pass
         for idx, identification in enumerate(identifications.values):
@@ -215,15 +227,22 @@ class CalibrationHandler(SimulationHandler):
             iteration_results = self._tinker_results(
                 identification, result)
             managed_results.append(iteration_results)
+            if self._optimization == "nsde" or self._optimization == "gde3" or self._optimization == "nsga2":
+                all_iteration_results = self._all_tinker_results(
+                    identification, result)
+                all_managed_results.append(all_iteration_results)
             _LOGGER.info("Finished %s optimization for %s", self._optimization,
                          identification)
             # pylint: disable=W0212
-            if not isinstance(result, op._optimize.OptimizeResult):
+            if self._optimization == "differential_evolution":
+                fun = result.fun
+                best_solution = result.x
+            elif self._optimization == "genetic_algorithm" or self._optimization == "direct":
                 fun = 1 / result["fun"]
                 best_solution = result["x"]
             else:
-                fun = result.fun
-                best_solution = result.x
+                fun = result["fun"]
+                best_solution = result["x"]
             _LOGGER.info("result.fun= %s", fun)
             optimal_params = {}
             for idx, key in enumerate(self.param_keys):
@@ -233,6 +252,11 @@ class CalibrationHandler(SimulationHandler):
             if len(managed_results_out) > 0:
                 managed_results_out.reset_index(drop=True, inplace=True)
                 managed_results_out.to_csv(results_path)
+            if self._optimization == "nsde" or self._optimization == "gde3" or self._optimization == "nsga2":
+                all_managed_results_out = pd.concat(all_managed_results)
+                if len(managed_results_out) > 0:
+                    all_managed_results_out.reset_index(drop=True, inplace=True)
+                    all_managed_results_out.to_csv(all_results_path)
         sumo_interface.release()
         del sumo_interface
         sumo_pipe.close()
@@ -265,6 +289,30 @@ class CalibrationHandler(SimulationHandler):
         iteration_results.loc[:,"gof"] = self.gof
         return iteration_results
 
+    def _all_tinker_results(self, identification, result):
+        cols = (["iteration", "weightedError", "convergence"]
+            + list(ModelParameters.get_defaults_dict().keys()))
+        all_iteration_results = pd.DataFrame(self.all_iteration_results,
+                                                columns=cols)
+        if self._optimization == "direct":
+            self.log_iteration(result.x, **{"weighted_error": result.fun})
+            all_iteration_results = pd.DataFrame(self.all_iteration_results,
+                                    columns=cols)
+        all_iteration_results.loc[:,"leader"] = identification[0]
+        all_iteration_results.loc[:,"follower"] = identification[1]
+        all_iteration_results.loc[:,"recordingId"] = identification[2]
+        all_iteration_results.loc[:,"algorithm"] = self._optimization
+        all_iteration_results.loc[:,"pop-size"] = self.population_size
+        all_iteration_results.loc[:,"objectives"] = ",".join(self.objectives)
+        all_iteration_results.loc[:,"paramKeys"] = ",".join(self.param_keys)
+        if self.weights:
+            weights_str = [str(item) for item in self.weights]
+        else:
+            weights_str = ""
+        all_iteration_results.loc[:,"weights"] = ",".join(weights_str)
+        all_iteration_results.loc[:,"gof"] = self.gof
+        return all_iteration_results
+
     def _run_optimization(self, bounds, sumo_interface, identification):
         global ITERATION
         global START_TIME
@@ -273,6 +321,7 @@ class CalibrationHandler(SimulationHandler):
                      self._optimization, str(identification))
         ITERATION = 1
         self.iteration_results = []
+        self.all_iteration_results = []
         self._prepare_optimization(
             sumo_interface, identification)
         START_TIME = time.time()
@@ -362,7 +411,7 @@ class CalibrationHandler(SimulationHandler):
             dict_bounds = []
             for bound_tuple in bounds:
                 dict_bounds.append({'low': bound_tuple[0], 'high': bound_tuple[1]})
-            ga_instance = pygad.GA(
+            nsga_instance = pygad.GA(
                 num_generations=self._max_iter,
                 num_parents_mating=int(self.initial_population.shape[0]//self.num_parents_mating),
                 initial_population=self.initial_population,
@@ -386,11 +435,82 @@ class CalibrationHandler(SimulationHandler):
                 mutation_probability=self.mutation_probability,
                 save_best_solutions=True,
                 on_fitness=fitness_callback_factory_nsga2(self))
-            ga_instance.run()
+            nsga_instance.run()
             solution, solution_fitness, _ = (
-                ga_instance.best_solution())
+                nsga_instance.best_solution())
+            solution_fitness = np.sum(solution_fitness)
             result = {"fun": solution_fitness, "x": solution}
-            del ga_instance
+            del nsga_instance
+        elif self._optimization == "nsde":
+            # variant can be the same as in DE, but takes the form "DE/selection/n/crossover"
+            # crossover is either 'bin' or 'exp'
+            # Selection variants are: 'ranked', 'rand', 'best', 'current-to-best', 'current-to-best', 'current-to-rand', 'rand-to-best'
+            nsde = NSDE(pop_size=self.population_size, variant="DE/rand/1/bin", F=self.mutation, CR=self.recombination, survival=RankAndCrowding(crowding_func="cd"))
+            termination_multi = DefaultMultiObjectiveTermination(
+                xtol=1e-8,
+                cvtol=1e-8,
+                ftol=1e-8,
+                period=20,
+                n_max_gen=self._max_iter,
+            )
+            low_bounds = []
+            high_bounds = []
+            for bound_tuple in bounds:
+                low_bounds.append(bound_tuple[0])
+                high_bounds.append(bound_tuple[1])
+            problem = target_factory_mo_de(self.data,
+                                           n_var=len(self.param_keys),
+                                           n_obj=len(self.data["objective_function"]["objectives"]),
+                                           n_ieq_constr=0,
+                                           n_eq_constr=0,
+                                           xl=low_bounds,
+                                           xu=high_bounds)
+            nsde_instance = minimize(problem,
+                                     nsde,
+                                     termination_multi,
+                                     seed=self.seed,
+                                     save_history=False, # deepcopy in save_history results in "cannot pickle '_io.TextIOWrapper' object"
+                                     verbose=False,
+                                     callback=self.log_iteration)
+            single_error = np.sum(nsde_instance.F,axis=1)
+            solution = nsde_instance.X[np.argmin(single_error)]
+            solution_fitness = min(single_error)
+            result = {"fun": solution_fitness, "x": solution}
+        elif self._optimization == "gde3":
+            # variant can be the same as in DE, but takes the form "DE/selection/n/crossover"
+            # crossover is either 'bin' or 'exp'
+            # Selection variants are: 'ranked', 'rand', 'best', 'current-to-best', 'current-to-best', 'current-to-rand', 'rand-to-best'
+            gde3 = GDE3(pop_size=self.population_size, variant="DE/rand/1/bin", F=self.mutation, CR=self.recombination, survival=RankAndCrowding(crowding_func="pcd"))
+            termination_multi = DefaultMultiObjectiveTermination(
+                xtol=1e-8,
+                cvtol=1e-8,
+                ftol=1e-8,
+                period=20,
+                n_max_gen=self._max_iter,
+            )
+            low_bounds = []
+            high_bounds = []
+            for bound_tuple in bounds:
+                low_bounds.append(bound_tuple[0])
+                high_bounds.append(bound_tuple[1])
+            problem = target_factory_mo_de(self.data,
+                                           n_var=len(self.param_keys),
+                                           n_obj=len(self.data["objective_function"]["objectives"]),
+                                           n_ieq_constr=0,
+                                           n_eq_constr=0,
+                                           xl=low_bounds,
+                                           xu=high_bounds)
+            gde3_instance = minimize(problem,
+                                     gde3,
+                                     termination_multi,
+                                     seed=self.seed,
+                                     save_history=False, # deepcopy in save_history results in "cannot pickle '_io.TextIOWrapper' object"
+                                     verbose=False,
+                                     callback=self.log_iteration)
+            single_error = np.sum(gde3_instance.F,axis=1)
+            solution = gde3_instance.X[np.argmin(single_error)]
+            solution_fitness = min(single_error)
+            result = {"fun": solution_fitness, "x": solution}
         elif self._optimization == "direct":
             result = op.direct(
                 _vectorized_target,
@@ -443,7 +563,14 @@ class CalibrationHandler(SimulationHandler):
         # pylint: disable=W0603
         global ITERATION
         global START_TIME
-        params = args[0]
+        if self._optimization == "nsde":
+            single_error = np.sum(args[0].opt.get("F"),axis=1)
+            params = args[0].opt.get("X")[np.argmin(single_error)]
+        elif self._optimization == "gde3":
+            single_error = np.sum(args[0].opt.get("F"),axis=1)
+            params = args[0].opt.get("X")[np.argmin(single_error)]
+        else:
+            params = args[0]
         time_taken = time.time() - START_TIME
         params_dict = self.x_0
         params_dict.update({key: value for key, value in zip(self.param_keys,
@@ -455,15 +582,49 @@ class CalibrationHandler(SimulationHandler):
                 if f"differential_evolution step {ITERATION}: f(x)= " in line:
                     break
             weighted_error = float(line.split("f(x)= ")[-1])
+        elif self._optimization == "nsde":
+            weighted_error = min(single_error)
+        elif self._optimization == "gde3":
+            weighted_error = min(single_error)
         else:
             weighted_error = kwargs.get("weighted_error") or 0
-        self.iteration_results.append(
-            {"iteration": ITERATION, "weightedError": weighted_error,
-             "convergence": kwargs.get("convergence") or -1, **params_dict})
         _LOGGER.debug("Current iteration %d with weighted_error=%f, "
                      " time taken:%f sec.\nConvergence:%f Parameters:%s",
                      ITERATION, weighted_error, time_taken,
                      kwargs.get("convergence") or -1, params_dict)
+        self.iteration_results.append(
+            {"iteration": ITERATION, "weightedError": weighted_error,
+             "convergence": kwargs.get("convergence") or -1, **params_dict})
+        if self._optimization == "nsde":
+            for idx, i in enumerate(args[0].opt.get("F")):
+                nondom_error = i
+                nondom_params = args[0].opt.get("X")[idx]
+                nondom_params_dict = self.x_0
+                nondom_params_dict.update({key: value for key, value
+                                                 in zip(self.param_keys, nondom_params)})
+                self.all_iteration_results.append(
+                    {"iteration": ITERATION, "weightedError": nondom_error,
+                     "convergence": kwargs.get("convergence") or -1, **nondom_params_dict})
+        elif self._optimization == "gde3":
+            for idx, i in enumerate(args[0].opt.get("F")):
+                nondom_error = i
+                nondom_params = args[0].opt.get("X")[idx]
+                nondom_params_dict = self.x_0
+                nondom_params_dict.update({key: value for key, value
+                                                 in zip(self.param_keys, nondom_params)})
+                self.all_iteration_results.append(
+                    {"iteration": ITERATION, "weightedError": nondom_error,
+                     "convergence": kwargs.get("convergence") or -1, **nondom_params_dict})
+        elif self._optimization == "nsga2":
+            for idx, i in enumerate(kwargs.get("nondom")):
+                nondom_error = 1 / i[1]
+                nondom_params = kwargs.get("pop")[i[0]]
+                nondom_params_dict = self.x_0
+                nondom_params_dict.update({key: value for key, value
+                                                 in zip(self.param_keys, nondom_params)})
+                self.all_iteration_results.append(
+                    {"iteration": ITERATION, "weightedError": nondom_error,
+                     "convergence": kwargs.get("convergence") or -1, **nondom_params_dict})
         _LOGGER.info(tqdm.format_meter(ITERATION, self._max_iter,
                           elapsed=time_taken,
                           prefix=str(self.identification))+
@@ -528,18 +689,19 @@ def fitness_callback_factory(item):
 def fitness_callback_factory_nsga2(item):
     """a factory for the fitness callback function"""
 
-    def on_fitness(ga_instance: pygad.GA, solutions):
+    def on_fitness(nsga_instance: pygad.GA, solutions_fitness):
         """provided callback for fitness"""
         solution, solution_fitness, _ = (
-                ga_instance.best_solution(ga_instance.last_generation_fitness))
-        best_solution = ga_instance.best_solutions[-1]
-        best = np.sqrt(np.einsum('...i,...i', solution_fitness, solution_fitness))
-        normed_solutions = np.sqrt(np.einsum('...i,...i', solutions, solutions))
-        if best < np.max(normed_solutions):
-            best = np.max(normed_solutions)
-            best_solution = ga_instance.population[
+                nsga_instance.best_solution(nsga_instance.last_generation_fitness))
+        best_solution = nsga_instance.best_solutions[-1]
+        best = np.sum([1 / sol for sol in solution_fitness])
+        normed_solutions = np.sum([1 / sol for sol in solutions_fitness],axis=1)
+        if best > np.min(normed_solutions):
+            best = np.min(normed_solutions)
+            best_solution = nsga_instance.population[
                 np.argmin(normed_solutions).astype(int)]
         # TODO: log instead of 1 / 0
-        kwargs = {"weighted_error": 1 / best}
+        pareto, _ = nsga_instance.non_dominated_sorting(solutions_fitness)
+        kwargs = {"weighted_error": best, "nondom": pareto[0], "pop": nsga_instance.population}
         _ = item.log_iteration(best_solution, **kwargs)
     return on_fitness    

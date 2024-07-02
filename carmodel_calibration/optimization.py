@@ -6,6 +6,7 @@ import os
 
 import numpy as np
 import pandas as pd
+from pymoo.core.problem import Problem
 
 # from carmodel_calibration.exceptions import OptimizationFailed
 from carmodel_calibration.fileaccess.parameter import ModelParameters
@@ -248,8 +249,9 @@ def target_factory(data, invert_error=False):
     """factory for creating a target callback"""
     def _vectorized_wrapper(ga_instance, params, solution_indexes):
         solutions = _vectorized_target(params.T, data)
-        if solution_indexes is None:
-            return None
+        # OutComment this when using adaptive mutation
+        #if solution_indexes is None:
+        #    return None
         if invert_error:
             return [1 / solution for solution in solutions]
         else:
@@ -267,3 +269,13 @@ def target_factory_nsga2(data, invert_error=False):
         else:
             return solutions
     return _vectorized_wrapper
+
+class target_factory_mo_de(Problem):
+
+    def __init__(self, data, **kwargs):
+        super().__init__(**kwargs)
+        self.data = data
+        
+    def _evaluate(self, X, out, *args, **kwargs):
+        # store the function values and return them.
+        out["F"] = np.array(_vectorized_target(X.T, self.data))

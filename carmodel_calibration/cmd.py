@@ -146,7 +146,7 @@ def _get_parser(args_to_parse):
                         help=recombination_help)
     mutation_help = "mutation"
     parser.add_argument("--mutation",
-                        type=tuple,
+                        type=_tuple_type,
                         default=(0.5,1.0),
                         help=mutation_help)
     if _check_for_args(args_to_parse, args_to_check):
@@ -169,6 +169,10 @@ def _get_parser(args_to_parse):
             "genetic_algorithm", help="Genetic Algorithm optimization")
         nsga2_parser = subparsers.add_parser(
             "nsga2", help="Non-dominated Sorting Genetic Algorithm II optimization")
+        nsde_parser = subparsers.add_parser(
+            "nsde", help="Non-dominated Sorting Differential Evolution optimization")
+        gde3_parser = subparsers.add_parser(
+            "gde3", help="Generalized Differential Evolution 3 optimization")
         direct_parser = subparsers.add_parser(
             "direct", help="direct optimization")
         model_help = "Model under test, e.g. `eidm`."
@@ -179,13 +183,13 @@ def _get_parser(args_to_parse):
         "`speedFactor,minGap,...`")
         force_selection_help = ("If the flag is passed, then the selection "
                                 "is forced to be recalculateld.")
-        for calibration_parser in [de_parser, ga_parser, nsga2_parser]:
+        for calibration_parser in [de_parser, ga_parser, nsga2_parser, nsde_parser, gde3_parser]:
             calibration_parser.add_argument("--population-size",
                                             type=int,
                                             default=5,
                                             help="Size of the population"
                                             "does not apply to direct.")
-        for calibration_parser in [de_parser, ga_parser, nsga2_parser, direct_parser]:
+        for calibration_parser in [de_parser, ga_parser, nsga2_parser, nsde_parser, gde3_parser, direct_parser]:
             calibration_parser.add_argument("--seed",
                                             type=int,
                                             default=None,
@@ -356,6 +360,11 @@ def _check_for_args(args_to_parse, args_to_check):
         if True in list(condition):
             return True
     return False
+
+def _tuple_type(strings):
+    strings = strings.replace("(", "").replace(")", "")
+    mapped_float = map(float, strings.split(","))
+    return tuple(mapped_float)
 
 def _kwargs_prompt():
     keys = {
