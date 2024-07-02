@@ -22,7 +22,7 @@ setup_dic = dict(
         'numpy==1.20.0',
         'matplotlib',
         'lxml',
-        'pygad==2.19.0',
+        'pygad==3.3.1',
         'regex',
         'argparse',
         'entrypoints>=0.2.2',
