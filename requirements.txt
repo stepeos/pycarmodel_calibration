@@ -10,3 +10,5 @@ entrypoints>=0.2.2
 SALib==1.4.5
 tqdm
 cloudpickle==2.2.1
+pymoo
+pymoode

@@ -28,7 +28,9 @@ setup_dic = dict(
         'entrypoints>=0.2.2',
         'SALib==1.4.5',
         'tqdm',
-        'cloudpickle==2.2.1'
+        'cloudpickle==2.2.1',
+        'pymoo',
+        'pymoode'
     ],
     include_package_data=True,
     python_requires=">=3.8, <3.10"
