@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2024-07-11 00:35:03 by Eclipse SUMO sumo Version 1.18.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="/home/bookboi/Documents/cloud/1_Docs/8_Coding/studienarbeit_nacharbeit/pycalibration_tool/test_data/result/sumo_project_differential_evolution/calibration_network.xml"/>
+        <route-files value="/home/bookboi/Documents/cloud/1_Docs/8_Coding/studienarbeit_nacharbeit/pycalibration_tool/test_data/result/sumo_project_differential_evolution/calibration_routes.rou.xml"/>
+    </input>
+
+    <output>
+        <fcd-output value="/home/bookboi/Documents/cloud/1_Docs/8_Coding/studienarbeit_nacharbeit/pycalibration_tool/test_data/result/sumo_project_differential_evolution/02_trajectories.xml"/>
+        <fcd-output.acceleration value="true"/>
+        <fcd-output.max-leader-distance value="1000"/>
+    </output>
+
+    <time>
+        <end value="5"/>
+        <step-length value="0.04"/>
+    </time>
+
+    <processing>
+        <collision.mingap-factor value="0.1"/>
+        <startup-wait-threshold value="-1"/>
+    </processing>
+
+</configuration>
+-->
+
+<fcd-export xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/fcd_file.xsd">
+</fcd-export>
