@@ -16,7 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def measure_of_performance_factory(objectives=["distance"],
-                                   weights=None, gof="rmse", **__):
+                                   weights=None, gof="rmse", reduce_mmop2smop=True,
+                                   **__):
     """
     this function will return the appropiate objective function handle
     depending on the desired MOP and the calibration object
@@ -73,7 +74,10 @@ def measure_of_performance_factory(objectives=["distance"],
                 prediction[sop].values
                 - ground_truth[sop].values))
             sums[idx] = np.sqrt(sums[idx] / len(ground_truth)) * weights[sop]
-        return np.sum(sums)
+        if reduce_mmop2smop:
+            return np.sum(sums)
+        else:
+            return sums
 
     def nrmse(ground_truth, prediction):
         """
@@ -90,7 +94,10 @@ def measure_of_performance_factory(objectives=["distance"],
             gt_root = np.sqrt(np.sum(np.square(ground_truth[sop].values))
                               / len(ground_truth))
             sums[idx] = rmse_error / (gt_root) * weights[sop]
-        return sums
+        if reduce_mmop2smop:
+            return np.sum(sums)
+        else:
+            return sums
 
     def rmspe(ground_truth, prediction):
         """
@@ -105,7 +112,10 @@ def measure_of_performance_factory(objectives=["distance"],
                  - ground_truth[sop].values)
                 / ground_truth[sop].values))
             sums[idx] = np.sqrt(sums[idx] / len(ground_truth)) * weights[sop]
-        return np.sum(sums)
+        if reduce_mmop2smop:
+            return np.sum(sums)
+        else:
+            return sums
 
     def theils_u(ground_truth, prediction):
         """
@@ -124,16 +134,23 @@ def measure_of_performance_factory(objectives=["distance"],
             gt_root = np.sqrt(np.sum(np.square(ground_truth[sop].values))
                               / len(ground_truth))
             sums[idx] = rmse_error / (sim_root + gt_root) * weights[sop]
-        return np.sum(sums)
+        if reduce_mmop2smop:
+            return np.sum(sums)
+        else:
+            return sums
 
     def model_output(_, prediction):
         """only sum model outputs"""
         sums = np.zeros(len(objectives))
         for idx, sop in enumerate(objectives):
             sums[idx] = prediction[sop].values[-1] * weights[sop]
-        return np.sum(sums)
-    gof_handles = {"rmse": rmse, "nrmse": nrmse, "rmsep": rmspe, "modelOutput": model_output,
-                   "theils_u": theils_u}
+        if reduce_mmop2smop:
+            return np.sum(sums)
+        else:
+            return sums
+
+    gof_handles = {"rmse": rmse, "nrmse": nrmse, "rmsep": rmspe,
+                   "modelOutput": model_output, "theils_u": theils_u}
 
     def get_weighted_error(ground_truth, prediction):
         """calculate weighted error on case1"""

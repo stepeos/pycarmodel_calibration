@@ -303,8 +303,7 @@ class CalibrationHandler(SimulationHandler):
         ITERATION = 1
         self.iteration_results = []
         self.all_iteration_results = []
-        self._prepare_optimization(
-            sumo_interface, identification)
+        self._prepare_optimization(sumo_interface, identification)
         START_TIME = time.time()
         if self._optimization == "differential_evolution":
             self.initial_population = random_population_from_bounds(
@@ -372,7 +371,7 @@ class CalibrationHandler(SimulationHandler):
                 # mutation_probability=[0.33, 0.10], # for adaptive
                 mutation_probability=self.mutation_probability,
                 save_best_solutions=True,
-                on_fitness=fitness_callback_factory(self))
+                on_fitness=fitness_callback_factory(self, "pygad"))
             ga_instance.run()
             solution, solution_fitness, _ = (
                 ga_instance.best_solution())
@@ -421,7 +420,7 @@ class CalibrationHandler(SimulationHandler):
                 # mutation_probability=[0.33, 0.10], # for adaptive
                 mutation_probability=self.mutation_probability,
                 save_best_solutions=True,
-                on_fitness=fitness_callback_factory_nsga2(self))
+                on_fitness=fitness_callback_factory(self, "pymoo"))
             nsga_instance.run()
             solution, solution_fitness, _ = (
                 nsga_instance.best_solution())
@@ -532,10 +531,17 @@ class CalibrationHandler(SimulationHandler):
             "timestep": self.timestep,
             "project_path": self.project_path
         }
+        # by default, the mops's are reduced to a single value, except for the
+        # optimization algorithms that explicitly handle mulitple measures of performance
+        # by themselves
+        reduce = True
+        if self._optimization in ["nsga2", "gde3", "nsde"]:
+            reduce = False
         objective_function = {
             "identification": identification,
             "objectives": self.objectives,
             "weights": self.weights,
+            "reduce_mmop2smop": reduce,
             "gof": self.gof}
         data = {
             "identification": identification,
@@ -665,11 +671,11 @@ def random_population_from_bounds(bounds: tuple, population_size: int,
     return population
 
 
-def fitness_callback_factory(item):
+def fitness_callback_factory(item, module_name):
     """a factory for the fitness callback function"""
 
-    def on_fitness(ga_instance: pygad.GA, solutions):
-        """provided callback for fitness"""
+    def on_fitness_pygad(ga_instance: pygad.GA, solutions):
+        """provided callback for fitness on pygad iteration"""
         best_solution = ga_instance.best_solutions[-1]
         best = np.max(ga_instance.last_generation_fitness)
         if best < np.max(solutions):
@@ -679,15 +685,10 @@ def fitness_callback_factory(item):
         # TODO: log instead of 1 / 0
         kwargs = {"weighted_error": 1 / best}
         _ = item.log_iteration(best_solution, **kwargs)
-    return on_fitness
 
-
-def fitness_callback_factory_nsga2(item):
-    """a factory for the fitness callback function"""
-
-    def on_fitness(nsga_instance: pygad.GA, solutions_fitness):
-        """provided callback for fitness"""
-        solution, solution_fitness, _ = (
+    def on_fitness_pymoo(nsga_instance, solutions_fitness):
+        """provided callback for fitness for pymoo iteration"""
+        _, solution_fitness, _ = (
             nsga_instance.best_solution(nsga_instance.last_generation_fitness))
         best_solution = nsga_instance.best_solutions[-1]
         best = np.sum([1 / sol for sol in solution_fitness])
@@ -702,4 +703,11 @@ def fitness_callback_factory_nsga2(item):
         kwargs = {"weighted_error": best,
                   "nondom": pareto[0], "pop": nsga_instance.population}
         _ = item.log_iteration(best_solution, **kwargs)
-    return on_fitness
+
+    if module_name == "pygad":
+        return on_fitness_pygad
+    elif module_name == "pymoo":
+        return on_fitness_pymoo
+    else:
+        return NotImplementedError("Module not implemented")
+
