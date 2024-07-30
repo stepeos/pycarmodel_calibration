@@ -93,6 +93,7 @@ def _get_weighted_errors(param_sets, sim_result, ident, results_chunk,
         weighted_error = results_chunk["weightedError"].values[jdx-1]
         if weighted_error == 0 or force_simulated:
             weighted_error = objective_function(gt, pred)
+        weighted_error = np.sum(weighted_error)
         weighted_errors.append(weighted_error)
     return weighted_errors
 
@@ -167,6 +168,7 @@ def _plot_single(identification, results_chunk, simulation_result,
             pred, gt = _get_results(
                 {1: simulation_result}, identification, jdx-1)
             weighted_error = results_chunk["weightedError"].values[jdx-1]
+        weighted_error = np.sum(weighted_error)
         time = pred["time"].values
         covered_distance = pred["coveredDistanceFollower"].values
         distance = pred["distance"].values

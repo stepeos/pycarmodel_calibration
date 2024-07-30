@@ -15,9 +15,12 @@ from carmodel_calibration.logging_config import configure_logging
 configure_logging()
 _LOGGER = logging.getLogger(__name__)
 
+
 def _get_edge_number(edge):
     return int(float(re.findall(r"([\+\-]*\d*\.*\d+)",
-                               str(edge.attrib["id"]))[0]))
+                                str(edge.attrib["id"]))[0]))
+
+
 class SumoProject:
     """class used to build sumo project for calibration purposes"""
 
@@ -30,7 +33,7 @@ class SumoProject:
         """
         default_params = ModelParameters.get_defaults_dict()
         cfmodel = ModelParameters.create_parameter_set(".tmp/params", model,
-                                                        **default_params)
+                                                       **default_params)
         if not project_path.exists():
             project_path.mkdir(parents=True)
         network_path = project_path / "calibration_network.xml"
@@ -42,7 +45,8 @@ class SumoProject:
                                    network_path)
         SumoProject.create_routes_from_network(network_path, routes_path,
                                                number_network_lanes, timestep)
-        SumoProject.create_config(network_path, routes_path, config_path, timestep)
+        SumoProject.create_config(
+            network_path, routes_path, config_path, timestep)
         SumoProject.write_followers_leader(routes_path,
                                            [cfmodel] * number_network_lanes)
 
@@ -63,8 +67,13 @@ class SumoProject:
         try:
             outs, errs = proc.communicate(timeout=10)
             _LOGGER.debug("%s \noutput:%s",
-                         " ".join(cmd),
-                         str(outs))
+                          " ".join(cmd),
+                          str(outs))
+            if proc.returncode:
+                _LOGGER.error("Network creation failed with %s and error %s",
+                              outs,
+                              errs)
+                raise RuntimeError("Network creation failed")
         except TimeoutExpired as exc:
             proc.kill()
             outs, errs = proc.communicate()
@@ -91,8 +100,8 @@ class SumoProject:
         for edge in net_root.findall('edge'):
             if re.match(pattern, str(edge.attrib['id'])):
                 num_edges += 1
-        edges =  net_root.findall('edge')
-        edges = sorted(edges, key= lambda x: _get_edge_number(edge))
+        edges = net_root.findall('edge')
+        edges = sorted(edges, key=lambda x: _get_edge_number(edge))
         for edge in edges:
             if re.match(pattern, str(edge.attrib['id'])):
                 source = str(edge.attrib['id'])
@@ -119,7 +128,7 @@ class SumoProject:
                             # <route id="r_TOP" edges="B249A249 A249A248 A248A249\
                             # A249B249"/>
                             edges = [f"{source}", f"A{num_edges-1}B{num_edges-2}",
-                                    dest]
+                                     dest]
                         else:
                             # <route id="r_MIDDLE" edges="B145A145 A145B145"/>
                             edges = [source, dest]
@@ -146,9 +155,9 @@ class SumoProject:
                 file_type = "routes"
                 file = str(routes_file)
             _LOGGER.error("%s-file not found at %s"
-                            "\ncreate network-file first",
-                            file_type,
-                            str(file))
+                          "\ncreate network-file first",
+                          file_type,
+                          str(file))
             raise FileNotFoundError
         cmd = [
             "sumo",
@@ -171,8 +180,8 @@ class SumoProject:
         try:
             outs, errs = proc.communicate(timeout=10)
             _LOGGER.debug("%s \noutput:%s",
-                         " ".join(cmd),
-                         str(outs))
+                          " ".join(cmd),
+                          str(outs))
         except TimeoutExpired as exc:
             proc.kill()
             outs, errs = proc.communicate()
@@ -270,7 +279,7 @@ class SumoProject:
         for edge in network_root.findall("edge"):
             if re.match(pattern, str(edge.attrib['id'])):
                 edge_numbers = (re.findall(r"([\+\-]*\d*\.*\d+)",
-                               str(edge.attrib["id"])))
+                                           str(edge.attrib["id"])))
                 edge_numbers = [int(float(item)) for item in edge_numbers]
                 if edge_numbers[0] != edge_numbers[1]:
                     print(str(edge.attrib['id']))

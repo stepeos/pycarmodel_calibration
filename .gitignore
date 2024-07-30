@@ -4,6 +4,8 @@
 
 ## private stuff
 .results/
+test_data/result
+test_data/01_WorldPositions_selection.csv
 .tmp/
 dist/
 ## data

@@ -6,6 +6,7 @@ import os
 
 import numpy as np
 import pandas as pd
+from pymoo.core.problem import Problem
 
 # from carmodel_calibration.exceptions import OptimizationFailed
 from carmodel_calibration.fileaccess.parameter import ModelParameters
@@ -13,8 +14,10 @@ from carmodel_calibration.sumo.sumo_project import SumoProject
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def measure_of_performance_factory(objectives=["distance"],
-                                   weights=None, gof="rmse", **__):
+                                   weights=None, gof="rmse", reduce_mmop2smop=True,
+                                   **__):
     """
     this function will return the appropiate objective function handle
     depending on the desired MOP and the calibration object
@@ -58,6 +61,7 @@ def measure_of_performance_factory(objectives=["distance"],
     objectives = weights_renamed
     for weights_value, objective in zip(weights_values, objectives):
         weights[objective] = weights_value
+
     def rmse(ground_truth, prediction):
         """
         RMSE(v)
@@ -70,7 +74,31 @@ def measure_of_performance_factory(objectives=["distance"],
                 prediction[sop].values
                 - ground_truth[sop].values))
             sums[idx] = np.sqrt(sums[idx] / len(ground_truth)) * weights[sop]
-        return np.sum(sums)
+        if reduce_mmop2smop:
+            return np.sum(sums)
+        else:
+            return sums
+
+    def nrmse(ground_truth, prediction):
+        """
+        NRMSE(v)
+        see 'About calibration of car-following dynamics of automated and
+        human-driven vehicles: Methodology, guidelines and codes'
+        """
+        sums = np.zeros(len(objectives))
+        for idx, sop in enumerate(objectives):
+            rmse_error = np.sum(np.square(
+                prediction[sop].values
+                - ground_truth[sop].values))
+            rmse_error = np.sqrt(rmse_error / len(ground_truth))
+            gt_root = np.sqrt(np.sum(np.square(ground_truth[sop].values))
+                              / len(ground_truth))
+            sums[idx] = rmse_error / (gt_root) * weights[sop]
+        if reduce_mmop2smop:
+            return np.sum(sums)
+        else:
+            return sums
+
     def rmspe(ground_truth, prediction):
         """
         RMSPE(v)
@@ -84,7 +112,11 @@ def measure_of_performance_factory(objectives=["distance"],
                  - ground_truth[sop].values)
                 / ground_truth[sop].values))
             sums[idx] = np.sqrt(sums[idx] / len(ground_truth)) * weights[sop]
-        return np.sum(sums)
+        if reduce_mmop2smop:
+            return np.sum(sums)
+        else:
+            return sums
+
     def theils_u(ground_truth, prediction):
         """
         theils U(v)
@@ -102,16 +134,23 @@ def measure_of_performance_factory(objectives=["distance"],
             gt_root = np.sqrt(np.sum(np.square(ground_truth[sop].values))
                               / len(ground_truth))
             sums[idx] = rmse_error / (sim_root + gt_root) * weights[sop]
-        return np.sum(sums)
+        if reduce_mmop2smop:
+            return np.sum(sums)
+        else:
+            return sums
 
     def model_output(_, prediction):
         """only sum model outputs"""
         sums = np.zeros(len(objectives))
         for idx, sop in enumerate(objectives):
             sums[idx] = prediction[sop].values[-1] * weights[sop]
-        return np.sum(sums)
-    gof_handles = {"rmse": rmse, "rmsep": rmspe, "modelOutput": model_output,
-                   "theils_u": theils_u}
+        if reduce_mmop2smop:
+            return np.sum(sums)
+        else:
+            return sums
+
+    gof_handles = {"rmse": rmse, "nrmse": nrmse, "rmsep": rmspe,
+                   "modelOutput": model_output, "theils_u": theils_u}
 
     def get_weighted_error(ground_truth, prediction):
         """calculate weighted error on case1"""
@@ -123,6 +162,7 @@ def measure_of_performance_factory(objectives=["distance"],
         return weigthed_error
 
     return get_weighted_error
+
 
 def factory_wrapper(factory_kwargs):
     """invokes factory from results data"""
@@ -142,30 +182,32 @@ def factory_wrapper(factory_kwargs):
     else:
         raise TypeError(
             "`factory_kwargs` must either be of type dict or pandas DattaFrame"
-            )
+        )
+
 
 def _get_results(simulation_results, identification, lane):
     """returns the simulation result for specific identification"""
     edge_name = f"B{lane}A{lane}"
     condition = (
-        (simulation_results[1]["prediction"]["edgeName"]==edge_name)
+        (simulation_results[1]["prediction"]["edgeName"] == edge_name)
     )
     prediction_result = simulation_results[1]["prediction"][condition]
     leader = identification[0]
     recording_id = identification[2]
     follower_condition = (
-        simulation_results[1]["ground_truth"]["follower"]==identification[1])
+        simulation_results[1]["ground_truth"]["follower"] == identification[1])
     condition = (
-        (simulation_results[1]["ground_truth"]["leader"]==leader)
+        (simulation_results[1]["ground_truth"]["leader"] == leader)
         & (follower_condition)
         & (simulation_results[1]["ground_truth"]
-            ["recordingId"]==recording_id)
+            ["recordingId"] == recording_id)
         & (simulation_results[1]["ground_truth"]
-            ["counter"]==lane)
+            ["counter"] == lane)
     )
     ground_truth_result = (
         simulation_results[1]["ground_truth"][condition])
     return prediction_result, ground_truth_result
+
 
 def _run_sumo(identification, sumo_interface, param_sets, project_path, model, timestep):
     cfmodels = []
@@ -177,7 +219,7 @@ def _run_sumo(identification, sumo_interface, param_sets, project_path, model, t
         sumo_interface.start_simulation_module()
     for idx, param_set in enumerate(param_sets):
         cfmodel = ModelParameters.create_parameter_set(f"set{idx}.json", model,
-                                                        **param_set)
+                                                       **param_set)
         cfmodels.append(cfmodel)
     SumoProject.write_followers_leader(
         project_path / "calibration_routes.rou.xml",
@@ -186,12 +228,14 @@ def _run_sumo(identification, sumo_interface, param_sets, project_path, model, t
         identification=identification)
     return simulation_results
 
+
 def _calculate_performance(idx, simulation_results, identification,
-                          objective_function):
+                           objective_function):
     prediction, ground_truth = _get_results(
-            simulation_results, identification, idx)
+        simulation_results, identification, idx)
     objective_function = factory_wrapper(objective_function)
     return objective_function(ground_truth, prediction)
+
 
 def _vectorized_target(params, *data):
     # params.shape = (Number params, number of solutions)
@@ -206,7 +250,7 @@ def _vectorized_target(params, *data):
     # keys of the paramters that are optimized
     param_names = data["param_names"]
     param_sets = []
-    if params.shape[1]==1:
+    if params.shape[1] == 1:
         params = params.T
     for solution in params:
         params_dict = data["default_parameters"].copy()
@@ -215,22 +259,36 @@ def _vectorized_target(params, *data):
         param_sets.append(params_dict)
     simulation_results = _run_sumo(
         identification, sumo_interface, param_sets, project_path, model, timestep)
-    with Pool(os.cpu_count()//2) as pool:
+    with Pool(os.cpu_count() // 2) as pool:
         results = []
         for idx in range(len(params)):
             results.append((idx, simulation_results, identification,
                             objective_function))
         performance = list(pool.starmap(_calculate_performance, results))
-    #performance = []
-    #for idx in range(len(params)):
-    #    performance.append(_calculate_performance(idx, simulation_results, identification,
-    #                    objective_function))
+    performance = []
+    for idx in range(len(params)):
+        performance.append(_calculate_performance(idx, simulation_results, identification,
+                                                  objective_function))
     return performance
 
 
 def target_factory(data, invert_error=False):
     """factory for creating a target callback"""
-    def _vectorized_wrapper(params, solution_indexes):
+    def _vectorized_wrapper(ga_instance, params, solution_indexes):
+        solutions = _vectorized_target(params.T, data)
+        # OutComment this when using adaptive mutation
+        # if solution_indexes is None:
+        #    return None
+        if invert_error:
+            return [1 / solution for solution in solutions]
+        else:
+            return solutions
+    return _vectorized_wrapper
+
+
+def target_factory_nsga2(data, invert_error=False):
+    """factory for creating a target callback"""
+    def _vectorized_wrapper(ga_instance, params, solution_indexes):
         solutions = _vectorized_target(params.T, data)
         if solution_indexes is None:
             return None
@@ -239,3 +297,14 @@ def target_factory(data, invert_error=False):
         else:
             return solutions
     return _vectorized_wrapper
+
+
+class target_factory_mo_de(Problem):
+
+    def __init__(self, data, **kwargs):
+        super().__init__(**kwargs)
+        self.data = data
+
+    def _evaluate(self, X, out, *args, **kwargs):
+        # store the function values and return them.
+        out["F"] = np.array(_vectorized_target(X.T, self.data))

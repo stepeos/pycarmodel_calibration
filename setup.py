@@ -22,13 +22,15 @@ setup_dic = dict(
         'numpy==1.20.0',
         'matplotlib',
         'lxml',
-        'pygad==2.19.0',
+        'pygad==3.3.1',
         'regex',
         'argparse',
         'entrypoints>=0.2.2',
         'SALib==1.4.5',
         'tqdm',
-        'cloudpickle==2.2.1'
+        'cloudpickle==2.2.1',
+        'pymoo',
+        'pymoode'
     ],
     include_package_data=True,
     python_requires=">=3.8, <3.10"
