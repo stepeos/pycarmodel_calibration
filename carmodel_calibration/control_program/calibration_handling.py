@@ -274,10 +274,10 @@ class CalibrationHandler(SimulationHandler):
         res = self.iteration_results if not all_results else self.all_iteration_results
         if self._optimization == "direct":
             self.log_iteration(result.x, **{"weighted_error": result.fun})
-            iteration_results = pd.DataFrame(self.iteration_results,
+            iteration_results = pd.DataFrame(res,
                                              columns=cols)
         else:
-            iteration_results = pd.DataFrame(self.iteration_results,
+            iteration_results = pd.DataFrame(res,
                                              columns=cols)
         iteration_results.loc[:, "leader"] = identification[0]
         iteration_results.loc[:, "follower"] = identification[1]
@@ -371,7 +371,7 @@ class CalibrationHandler(SimulationHandler):
                 # mutation_probability=[0.33, 0.10], # for adaptive
                 mutation_probability=self.mutation_probability,
                 save_best_solutions=True,
-                on_fitness=fitness_callback_factory(self, "pygad"))
+                on_fitness=fitness_callback_factory(self))
             ga_instance.run()
             solution, solution_fitness, _ = (
                 ga_instance.best_solution())
@@ -420,7 +420,7 @@ class CalibrationHandler(SimulationHandler):
                 # mutation_probability=[0.33, 0.10], # for adaptive
                 mutation_probability=self.mutation_probability,
                 save_best_solutions=True,
-                on_fitness=fitness_callback_factory(self, "pymoo"))
+                on_fitness=fitness_callback_factory_nsga2(self))
             nsga_instance.run()
             solution, solution_fitness, _ = (
                 nsga_instance.best_solution())
@@ -671,11 +671,11 @@ def random_population_from_bounds(bounds: tuple, population_size: int,
     return population
 
 
-def fitness_callback_factory(item, module_name):
+def fitness_callback_factory(item):
     """a factory for the fitness callback function"""
 
-    def on_fitness_pygad(ga_instance: pygad.GA, solutions):
-        """provided callback for fitness on pygad iteration"""
+    def on_fitness(ga_instance: pygad.GA, solutions):
+        """provided callback for fitness"""
         best_solution = ga_instance.best_solutions[-1]
         best = np.max(ga_instance.last_generation_fitness)
         if best < np.max(solutions):
@@ -685,9 +685,13 @@ def fitness_callback_factory(item, module_name):
         # TODO: log instead of 1 / 0
         kwargs = {"weighted_error": 1 / best}
         _ = item.log_iteration(best_solution, **kwargs)
+    return on_fitness
 
-    def on_fitness_pymoo(nsga_instance, solutions_fitness):
-        """provided callback for fitness for pymoo iteration"""
+def fitness_callback_factory_nsga2(item):
+    """a factory for the fitness callback function"""
+
+    def on_fitness(nsga_instance: pygad.GA, solutions_fitness):
+        """provided callback for fitness"""
         _, solution_fitness, _ = (
             nsga_instance.best_solution(nsga_instance.last_generation_fitness))
         best_solution = nsga_instance.best_solutions[-1]
@@ -703,11 +707,4 @@ def fitness_callback_factory(item, module_name):
         kwargs = {"weighted_error": best,
                   "nondom": pareto[0], "pop": nsga_instance.population}
         _ = item.log_iteration(best_solution, **kwargs)
-
-    if module_name == "pygad":
-        return on_fitness_pygad
-    elif module_name == "pymoo":
-        return on_fitness_pymoo
-    else:
-        return NotImplementedError("Module not implemented")
-
+    return on_fitness
